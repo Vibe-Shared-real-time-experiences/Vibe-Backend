@@ -1,0 +1,60 @@
+package vn.vibeteam.vibe.model.conversation;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
+import vn.vibeteam.vibe.model.authorization.User;
+import vn.vibeteam.vibe.model.common.BaseEntity;
+import vn.vibeteam.vibe.model.server.MessageAttachment;
+import vn.vibeteam.vibe.model.server.MessageMetadata;
+
+import java.util.List;
+//import com.vladmihalcea.hibernate.type.json.JsonType;
+//import org.hibernate.annotations.Type;
+
+@Entity
+@Table(name = "conversation_messages")
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@Builder
+public class ConversationMessage extends BaseEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "conversation_id", nullable = false)
+    private Long conversationId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "conversation_id", insertable = false, updatable = false)
+    private Conversation conversation;
+
+    @Column(name = "author_id", nullable = false)
+    private Long authorId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id", insertable = false, updatable = false)
+    private User author;
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "attachments", columnDefinition = "jsonb")
+    private List<MessageAttachment> attachmentMetadata;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "meta_data", columnDefinition = "jsonb")
+    private MessageMetadata metadata;
+
+    @Column(name = "is_pinned")
+    private Boolean isPinned;
+
+    @Column(name = "is_edited")
+    private Boolean isEdited;
+}
+

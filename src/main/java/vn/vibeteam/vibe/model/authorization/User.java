@@ -1,0 +1,27 @@
+package vn.vibeteam.vibe.model.authorization;
+
+import jakarta.persistence.*;
+import lombok.*;
+import vn.vibeteam.vibe.model.common.BaseEntity;
+
+@Entity
+@Table(name = "users")
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@Builder
+public class User extends BaseEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "username", unique = true, nullable = false)
+    private String username;
+
+    @Column(name = "password", nullable = false)
+    private String password;
+
+    @Column(name = "is_active")
+    private Boolean isActive;
+}
