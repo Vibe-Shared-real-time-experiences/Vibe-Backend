@@ -1,4 +1,4 @@
-package vn.vibeteam.vibe.constraint;
+package vn.vibeteam.vibe.common;
 
 public enum ChannelType {
     TEXT,

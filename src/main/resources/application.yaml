@@ -1,7 +1,5 @@
 server:
   port: 8080
-  servlet:
-    context-path: /api/v1/
 spring:
   config:
     import: "optional:file:app.env[.properties]"
@@ -16,3 +14,13 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
+  redis:
+    host: localhost
+    port: 6379
+
+security:
+  jwt:
+    secret-key: "91f6b3d88bdd0c39fa408b0ee613cdd4e83c774c9440e96c3107e1dc8604a4c8"
+    issuer: "VibeApp"
+    expiration-ms: 3600
+    refresh-expiration-ms: 604800

@@ -40,9 +40,8 @@ CREATE TABLE roles
 CREATE TABLE permissions
 (
     id          BIGSERIAL PRIMARY KEY,
-    name        VARCHAR(255) UNIQUE NOT NULL, -- e.g. "VIEW_CHANNEL", "BAN_MEMBERS"
+    name        VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
-    code        INT                 NOT NULL,
     created_at  TIMESTAMP DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE,
     is_active   BOOLEAN   DEFAULT TRUE,
@@ -62,19 +61,22 @@ CREATE TABLE role_permissions
 (
     id            BIGSERIAL PRIMARY KEY,
     role_id       BIGSERIAL NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
-    permission_id BIGSERIAL       NOT NULL REFERENCES permissions (id) ON DELETE CASCADE,
+    permission_id BIGSERIAL NOT NULL REFERENCES permissions (id) ON DELETE CASCADE,
     UNIQUE (role_id, permission_id)
 );
 
 CREATE TABLE relationships
 (
-    id         BIGSERIAL PRIMARY KEY,
-    user_id_1  BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    user_id_2  BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    status     VARCHAR(20) CHECK (status IN ('PENDING', 'FRIEND', 'BLOCKED')),
+    id        BIGSERIAL PRIMARY KEY,
+    user_id_1 BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    user_id_2 BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    status    VARCHAR(20) CHECK (status IN ('PENDING', 'FRIEND', 'BLOCKED')),
     UNIQUE (user_id_1, user_id_2)
 );
 
+-- ==========================================
+-- 2. SERVERS, CHANNELS & MESSAGING
+-- ==========================================
 CREATE TABLE servers
 (
     id          BIGSERIAL PRIMARY KEY,
@@ -115,6 +117,19 @@ CREATE TABLE channels
     is_deleted  BOOLEAN                  DEFAULT FALSE
 );
 
+CREATE TABLE server_permissions
+(
+    id          BIGSERIAL PRIMARY KEY,
+    name        VARCHAR(255) UNIQUE NOT NULL, -- e.g. "VIEW_CHANNEL", "BAN_MEMBERS"
+    description TEXT,
+    bitmask     BIGINT              NOT NULL,
+    created_at  TIMESTAMP DEFAULT NOW(),
+    updated_at  TIMESTAMP WITH TIME ZONE,
+    is_active   BOOLEAN   DEFAULT TRUE,
+    is_deleted  BOOLEAN   DEFAULT FALSE
+);
+
+
 CREATE TABLE server_members
 (
     id        BIGSERIAL PRIMARY KEY,
@@ -126,33 +141,52 @@ CREATE TABLE server_members
     UNIQUE (server_id, user_id)
 );
 
+CREATE TABLE server_roles
+(
+    id                 BIGSERIAL PRIMARY KEY,
+    server_id          BIGSERIAL   NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    name               VARCHAR(50) NOT NULL,
+    color              VARCHAR(7),
+    position           INT       DEFAULT 0,
+    permission_bitmask BIGINT    DEFAULT 0,
+    created_at         TIMESTAMP DEFAULT NOW(),
+    updated_at         TIMESTAMP WITH TIME ZONE,
+    is_active          BOOLEAN   DEFAULT TRUE,
+    is_deleted         BOOLEAN   DEFAULT FALSE
+);
+
+CREATE TABLE server_has_permissions
+(
+    id            BIGSERIAL PRIMARY KEY,
+    server_id     BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    permission_id BIGSERIAL NOT NULL REFERENCES server_has_permissions (id) ON DELETE CASCADE,
+    UNIQUE (server_id, permission_id)
+);
+
+
 CREATE TABLE member_roles
 (
-    id         BIGSERIAL PRIMARY KEY,
-    server_id  BIGSERIAL   NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
-    name       VARCHAR(50) NOT NULL,
-    color      VARCHAR(7),
-    position   INT       DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE,
-    is_active  BOOLEAN   DEFAULT TRUE,
-    is_deleted BOOLEAN   DEFAULT FALSE
+    id        BIGSERIAL PRIMARY KEY,
+    server_id BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    member_id BIGSERIAL NOT NULL REFERENCES server_members (id) ON DELETE CASCADE,
+    role_id   BIGSERIAL NOT NULL REFERENCES server_roles (id) ON DELETE CASCADE,
+    UNIQUE (server_id, member_id, role_id)
 );
 
 CREATE TABLE channel_messages
 (
-    id             BIGINT PRIMARY KEY,
-    channel_id     BIGSERIAL NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
-    author_id      BIGSERIAL NOT NULL REFERENCES users (id),
-    content        TEXT,
+    id          BIGINT PRIMARY KEY,
+    channel_id  BIGSERIAL NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
+    author_id   BIGSERIAL NOT NULL REFERENCES users (id),
+    content     TEXT,
     -- List of jsonb objects with attachment info
-    attachments    JSONB,
-    meta_data      JSONB, -- For reactions, embeds, etc.
-    is_pinned      BOOLEAN                  DEFAULT FALSE,
-    is_edited      BOOLEAN                  DEFAULT FALSE,
-    created_at     TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at     TIMESTAMP WITH TIME ZONE,
-    is_deleted     BOOLEAN                  DEFAULT FALSE
+    attachments JSONB,
+    meta_data   JSONB, -- For reactions, embeds, etc.
+    is_pinned   BOOLEAN                  DEFAULT FALSE,
+    is_edited   BOOLEAN                  DEFAULT FALSE,
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at  TIMESTAMP WITH TIME ZONE,
+    is_deleted  BOOLEAN                  DEFAULT FALSE
 );
 
 CREATE TABLE conversations
@@ -181,8 +215,8 @@ CREATE TABLE conversation_messages
     conversation_id BIGSERIAL NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
     author_id       BIGSERIAL NOT NULL REFERENCES users (id),
     content         TEXT,
-    attachments    JSONB,
-    meta_data      JSONB, -- For reactions, embeds, etc.
+    attachments     JSONB,
+    meta_data       JSONB, -- For reactions, embeds, etc.
     is_pinned       BOOLEAN                  DEFAULT FALSE,
     is_edited       BOOLEAN                  DEFAULT FALSE,
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -220,3 +254,67 @@ CREATE TABLE conversation_messages
 --     is_read    BOOLEAN                  DEFAULT FALSE,
 --     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 -- );
+
+-- ==========================================
+-- DATA INITIALIZATION
+-- ==========================================
+
+-- Insert default permissions
+
+INSERT INTO permissions (name, description)
+VALUES ('FULL_ACCESS', 'Permission to have full access to all features'),
+       ('CREATE_SERVER', 'Permission to create a new server'),
+       ('DELETE_SERVER', 'Permission to delete a server'),
+       ('MANAGE_SERVER', 'Permission to manage server settings'),
+       ('CREATE_CHANNEL', 'Permission to create channels in a server'),
+       ('DELETE_CHANNEL', 'Permission to delete channels in a server'),
+       ('MANAGE_CHANNEL', 'Permission to manage channel settings'),
+       ('SEND_MESSAGES', 'Permission to send messages in channels'),
+       ('DELETE_MESSAGES', 'Permission to delete messages in channels'),
+       ('BAN_USERS', 'Permission to ban users from the server'),
+       ('KICK_USERS', 'Permission to kick users from the server');
+
+INSERT INTO roles (name, description)
+VALUES ('ADMIN', 'Administrator with full permissions'),
+       ('MODERATOR', 'Moderator with limited management permissions');
+
+INSERT INTO role_permissions (role_id, permission_id)
+VALUES (
+    (SELECT id FROM roles WHERE name = 'ADMIN'),
+    (SELECT id FROM permissions WHERE name = 'FULL_ACCESS')
+);
+
+-- Sample user & admin account
+INSERT INTO Users (username, password)
+VALUES ('admin', '$2a$10$NL.fF5iJyANZKrvzuCjUT.V7DQrFE5oddrZ1vIouVi07UimJ2tX1y'),
+       ('user1', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.');
+
+INSERT INTO user_roles (user_id, role_id)
+VALUES (
+    (SELECT id FROM users WHERE username = 'admin'),
+    (SELECT id FROM roles WHERE name = 'ADMIN')
+);
+
+-- Discord-like server permissions with bitmask values (20 most common ones)
+INSERT INTO server_permissions (name, description, bitmask)
+VALUES ('VIEW_CHANNEL', 'Permission to view channels', 1),
+       ('SEND_MESSAGES', 'Permission to send messages in channels', 2),
+       ('MANAGE_MESSAGES', 'Permission to manage messages in channels', 4),
+       ('MANAGE_CHANNELS', 'Permission to manage channel settings', 8),
+       ('BAN_MEMBERS', 'Permission to ban members from the server', 16),
+       ('KICK_MEMBERS', 'Permission to kick members from the server', 32),
+       ('MANAGE_ROLES', 'Permission to manage roles within the server', 64),
+       ('MANAGE_SERVER', 'Permission to manage server settings', 128),
+       ('MENTION_EVERYONE', 'Permission to mention everyone in the server', 256),
+       ('MANAGE_NICKNAMES', 'Permission to manage nicknames of members', 512),
+       ('CHANGE_NICKNAME', 'Permission to change own nickname', 1024),
+       ('MANAGE_EMOJIS', 'Permission to manage emojis in the server', 2048),
+       ('VIEW_AUDIT_LOG', 'Permission to view the audit log', 4096),
+       ('PRIORITY_SPEAKER', 'Permission to use priority speaker in voice channels', 8192),
+       ('STREAM', 'Permission to stream in voice channels', 16384),
+       ('CONNECT', 'Permission to connect to voice channels', 32768),
+       ('SPEAK', 'Permission to speak in voice channels', 65536),
+       ('MUTE_MEMBERS', 'Permission to mute members in voice channels', 131072),
+       ('DEAFEN_MEMBERS', 'Permission to deafen members in voice channels', 262144),
+       ('MOVE_MEMBERS', 'Permission to move members between voice channels', 524288);
+

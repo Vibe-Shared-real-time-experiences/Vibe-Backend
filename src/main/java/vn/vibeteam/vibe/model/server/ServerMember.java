@@ -6,6 +6,8 @@ import vn.vibeteam.vibe.model.authorization.User;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "server_members")
@@ -35,5 +37,9 @@ public class ServerMember {
 
     @Column(name = "is_active")
     private Boolean isActive;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "serverMember", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<MemberRole> memberRoles = new HashSet<>();
 }
 

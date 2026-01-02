@@ -55,6 +55,6 @@ public class Server extends BaseEntity {
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "server", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private Set<MemberRole> memberRoles = new HashSet<>();
+    private Set<ServerRole> serverRoles = new HashSet<>();
 }
 

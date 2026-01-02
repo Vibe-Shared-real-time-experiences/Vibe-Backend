@@ -2,16 +2,15 @@ package vn.vibeteam.vibe.model.server;
 
 import jakarta.persistence.*;
 import lombok.*;
-import vn.vibeteam.vibe.model.authorization.User;
 
 @Entity
-@Table(name = "member_roles")
+@Table(name = "server_has_permissions")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
 @Builder
-public class MemberRole {
+public class ServerHasPermission {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,10 +20,6 @@ public class MemberRole {
     private Server server;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
-    private ServerMember serverMember;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false)
-    private ServerRole serverRole;
+    @JoinColumn(name = "permission_id", nullable = false)
+    private ServerPermission permission;
 }

@@ -1,4 +1,4 @@
-package vn.vibeteam.vibe.model.authorization;
+package vn.vibeteam.vibe.model.server;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,13 +8,13 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "permissions")
+@Table(name = "server_permissions")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
 @Builder
-public class Permission extends BaseEntity {
+public class ServerPermission extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -25,11 +25,13 @@ public class Permission extends BaseEntity {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "bitmask", nullable = false)
+    private Long bitmask;
+
     @Column(name = "is_active")
     private Boolean isActive;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "permission")
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "permission", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private Set<RolePermission> rolePermissions = new HashSet<>();
+    private Set<ServerHasPermission> serverHasPermissions = new HashSet<>();
 }
-

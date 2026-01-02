@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
+import java.util.Set;
+
 @Entity
 @Table(name = "users")
 @NoArgsConstructor
@@ -21,6 +23,10 @@ public class User extends BaseEntity {
 
     @Column(name = "password", nullable = false)
     private String password;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<UserRole> userRoles = new java.util.HashSet<>();
 
     @Column(name = "is_active")
     private Boolean isActive;

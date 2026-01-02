@@ -2,7 +2,7 @@ package vn.vibeteam.vibe.model.server;
 
 import jakarta.persistence.*;
 import lombok.*;
-import vn.vibeteam.vibe.constraint.ChannelType;
+import vn.vibeteam.vibe.common.ChannelType;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
 import java.util.HashSet;
