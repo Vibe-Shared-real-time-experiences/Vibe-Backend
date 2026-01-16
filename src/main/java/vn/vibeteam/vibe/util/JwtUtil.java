@@ -20,7 +20,6 @@ import java.time.Instant;
 public class JwtUtil {
 
     private final JwtProperty jwtConfig;
-//    private final TokenBlacklistService blacklistService;
 
     public String generateToken(String userID, Map<String, Object> claims) {
         try {

@@ -2,6 +2,7 @@ package vn.vibeteam.vibe.model.server;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 import vn.vibeteam.vibe.model.authorization.User;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
@@ -10,6 +11,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "servers")
+@SQLRestriction("is_deleted = false")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -20,11 +22,8 @@ public class Server extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "owner_id", nullable = false)
-    private Long ownerId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", insertable = false, updatable = false)
+    @JoinColumn(name = "owner_id")
     private User owner;
 
     @Column(name = "name", nullable = false)
@@ -56,5 +55,19 @@ public class Server extends BaseEntity {
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "server", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<ServerRole> serverRoles = new HashSet<>();
-}
 
+    public void addCategory(Category category) {
+        this.categories.add(category);
+        category.setServer(this);
+    }
+
+    public void addChannel(Channel generalTextChannel) {
+        this.channels.add(generalTextChannel);
+        generalTextChannel.setServer(this);
+    }
+
+    public void addMember(ServerMember ownerMember) {
+        this.serverMembers.add(ownerMember);
+        ownerMember.setServer(this);
+    }
+}

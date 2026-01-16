@@ -3,7 +3,7 @@ package vn.vibeteam.vibe.model.conversation;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 import vn.vibeteam.vibe.model.authorization.User;
 import vn.vibeteam.vibe.model.common.BaseEntity;
@@ -11,11 +11,10 @@ import vn.vibeteam.vibe.model.server.MessageAttachment;
 import vn.vibeteam.vibe.model.server.MessageMetadata;
 
 import java.util.List;
-//import com.vladmihalcea.hibernate.type.json.JsonType;
-//import org.hibernate.annotations.Type;
 
 @Entity
 @Table(name = "conversation_messages")
+@SQLRestriction("is_deleted = false")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -57,4 +56,3 @@ public class ConversationMessage extends BaseEntity {
     @Column(name = "is_edited")
     private Boolean isEdited;
 }
-

@@ -3,7 +3,6 @@ package vn.vibeteam.vibe.model.conversation;
 import jakarta.persistence.*;
 import lombok.*;
 import vn.vibeteam.vibe.model.authorization.User;
-import vn.vibeteam.vibe.model.common.BaseEntity;
 
 import java.time.LocalDateTime;
 
@@ -30,4 +29,3 @@ public class ConversationParticipant {
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
 }
-

@@ -2,6 +2,7 @@ package vn.vibeteam.vibe.model.conversation;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
 import java.util.HashSet;
@@ -9,6 +10,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "conversations")
+@SQLRestriction("is_deleted = false")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -36,4 +38,3 @@ public class Conversation extends BaseEntity {
     @Builder.Default
     private Set<ConversationMessage> messages = new HashSet<>();
 }
-

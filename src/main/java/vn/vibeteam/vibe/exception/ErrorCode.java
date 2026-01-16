@@ -11,6 +11,17 @@ public enum ErrorCode {
 
     INVALID_CREDENTIALS(401, "Invalid credentials", HttpStatus.UNAUTHORIZED),
     INTERNAL_SERVER_ERROR(500, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    CHANNEL_NOT_FOUND(404, "Channel not found", HttpStatus.NOT_FOUND),
+    SERVER_NOT_FOUND(404, "Server not found", HttpStatus.NOT_FOUND),
+    MEMBER_NOT_IN_SERVER(403, "Member not in server", HttpStatus.FORBIDDEN),
+    RESOURCE_NOT_FOUND(404, "Resource not found", HttpStatus.NOT_FOUND),
+
+    INVALID_REQUEST(400, "Invalid request", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED(403, "Unauthorized", HttpStatus.FORBIDDEN),
+    UNAUTHORIZED_ACTION(403, "Unauthorized action", HttpStatus.FORBIDDEN),
+
+    MESSAGE_NOT_FOUND(404, "Message not found", HttpStatus.NOT_FOUND)
     ;
 
     private int code;

@@ -32,14 +32,16 @@ import javax.crypto.spec.SecretKeySpec;
 public class SecurityConfig {
 
     private final JwtProperty jwtProperty;
-    private final JwtFilter jwtFilter;
     private final BlacklistValidator blacklistValidator;
     private final AuthenticationEntryPoint customAuthenticationEntryPoint;
 
     private final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
-            "/api/v1/public/**"
+            "/api/v1/public/**",
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html"
     };
 
     @Bean
@@ -48,15 +50,13 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
-
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
                                 .decoder(jwtDecoder(blacklistValidator))

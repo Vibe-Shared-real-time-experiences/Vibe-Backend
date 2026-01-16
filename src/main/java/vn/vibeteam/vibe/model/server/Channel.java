@@ -2,6 +2,7 @@ package vn.vibeteam.vibe.model.server;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 import vn.vibeteam.vibe.common.ChannelType;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
@@ -10,6 +11,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "channels")
+@SQLRestriction("is_deleted = false")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -20,18 +22,12 @@ public class Channel extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "server_id")
-    private Long serverId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "server_id", insertable = false, updatable = false)
+    @JoinColumn(name = "server_id")
     private Server server;
 
-    @Column(name = "category_id")
-    private Long categoryId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", insertable = false, updatable = false)
+    @JoinColumn(name = "category_id")
     private Category category;
 
     @Column(name = "name")
@@ -44,8 +40,13 @@ public class Channel extends BaseEntity {
     @Column(name = "position")
     private Integer position;
 
+    @Column(name = "is_public")
+    private Boolean isPublic;
+
+    @Column(name = "is_active")
+    private Boolean isActive;
+
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<ChannelMessage> messages = new HashSet<>();
 }
-

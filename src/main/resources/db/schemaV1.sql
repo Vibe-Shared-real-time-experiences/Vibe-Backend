@@ -86,9 +86,9 @@ CREATE TABLE servers
     icon_url    TEXT,
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE,
-    is_public   BOOLEAN                  DEFAULT TRUE,
-    is_active   BOOLEAN                  DEFAULT TRUE,
-    is_deleted  BOOLEAN                  DEFAULT FALSE
+    is_public   BOOLEAN      NOT NULL    DEFAULT TRUE,
+    is_active   BOOLEAN      NOT NULL    DEFAULT TRUE,
+    is_deleted  BOOLEAN      NOT NULL    DEFAULT FALSE
 );
 
 CREATE TABLE categories
@@ -96,11 +96,11 @@ CREATE TABLE categories
     id         BIGSERIAL PRIMARY KEY,
     server_id  BIGSERIAL   NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
     name       VARCHAR(50) NOT NULL,
-    position   INT                      DEFAULT 0,
+    position   INT         NOT NULL     DEFAULT 0,
+    is_public  BOOLEAN     NOT NULL     DEFAULT TRUE,
+    is_active  BOOLEAN     NOT NULL     DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE,
-    is_public  BOOLEAN                  DEFAULT TRUE,
-    is_active  BOOLEAN                  DEFAULT TRUE,
     is_deleted BOOLEAN                  DEFAULT FALSE
 );
 
@@ -108,13 +108,15 @@ CREATE TABLE channels
 (
     id          BIGSERIAL PRIMARY KEY,
     server_id   BIGSERIAL REFERENCES servers (id) ON DELETE CASCADE,
-    category_id BIGSERIAL   REFERENCES categories (id) ON DELETE SET NULL,
+    category_id BIGSERIAL REFERENCES categories (id) ON DELETE CASCADE,
     name        VARCHAR(100), -- Nullable for DMs
     type        VARCHAR(20) NOT NULL CHECK (type IN ('TEXT', 'VOICE', 'DM')),
-    position    INT                      DEFAULT 0,
+    position    INT         NOT NULL     DEFAULT 0,
+    is_public   BOOLEAN     NOT NULL     DEFAULT TRUE,
+    is_active   BOOLEAN     NOT NULL     DEFAULT TRUE,
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE,
-    is_deleted  BOOLEAN                  DEFAULT FALSE
+    is_deleted  BOOLEAN     NOT NULL     DEFAULT FALSE
 );
 
 CREATE TABLE server_permissions
@@ -132,12 +134,13 @@ CREATE TABLE server_permissions
 
 CREATE TABLE server_members
 (
-    id        BIGSERIAL PRIMARY KEY,
-    server_id BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
-    user_id   BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    nickname  VARCHAR(32),
-    joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    is_active BOOLEAN                  DEFAULT TRUE,
+    id         BIGSERIAL PRIMARY KEY,
+    server_id  BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    user_id    BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    nickname   VARCHAR(32),
+    avatar_url TEXT,
+    joined_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_active  BOOLEAN   NOT NULL       DEFAULT TRUE,
     UNIQUE (server_id, user_id)
 );
 
@@ -177,7 +180,7 @@ CREATE TABLE channel_messages
 (
     id          BIGINT PRIMARY KEY,
     channel_id  BIGSERIAL NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
-    author_id   BIGSERIAL NOT NULL REFERENCES users (id),
+    author_id   BIGSERIAL NOT NULL REFERENCES server_members (id),
     content     TEXT,
     -- List of jsonb objects with attachment info
     attachments JSONB,
@@ -196,8 +199,8 @@ CREATE TABLE conversations
     name       VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE,
-    is_active  BOOLEAN                  DEFAULT TRUE,
-    is_deleted BOOLEAN                  DEFAULT FALSE
+    is_active  BOOLEAN NOT NULL         DEFAULT TRUE,
+    is_deleted BOOLEAN NOT NULL         DEFAULT FALSE
 );
 
 CREATE TABLE conversation_participants
@@ -221,7 +224,7 @@ CREATE TABLE conversation_messages
     is_edited       BOOLEAN                  DEFAULT FALSE,
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE,
-    is_deleted      BOOLEAN                  DEFAULT FALSE
+    is_deleted      BOOLEAN   NOT NULL       DEFAULT FALSE
 );
 
 -- CREATE TABLE user_bios
@@ -255,6 +258,7 @@ CREATE TABLE conversation_messages
 --     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 -- );
 
+
 -- ==========================================
 -- DATA INITIALIZATION
 -- ==========================================
@@ -279,10 +283,8 @@ VALUES ('ADMIN', 'Administrator with full permissions'),
        ('MODERATOR', 'Moderator with limited management permissions');
 
 INSERT INTO role_permissions (role_id, permission_id)
-VALUES (
-    (SELECT id FROM roles WHERE name = 'ADMIN'),
-    (SELECT id FROM permissions WHERE name = 'FULL_ACCESS')
-);
+VALUES ((SELECT id FROM roles WHERE name = 'ADMIN'),
+        (SELECT id FROM permissions WHERE name = 'FULL_ACCESS'));
 
 -- Sample user & admin account
 INSERT INTO Users (username, password)
@@ -290,10 +292,8 @@ VALUES ('admin', '$2a$10$NL.fF5iJyANZKrvzuCjUT.V7DQrFE5oddrZ1vIouVi07UimJ2tX1y')
        ('user1', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.');
 
 INSERT INTO user_roles (user_id, role_id)
-VALUES (
-    (SELECT id FROM users WHERE username = 'admin'),
-    (SELECT id FROM roles WHERE name = 'ADMIN')
-);
+VALUES ((SELECT id FROM users WHERE username = 'admin'),
+        (SELECT id FROM roles WHERE name = 'ADMIN'));
 
 -- Discord-like server permissions with bitmask values (20 most common ones)
 INSERT INTO server_permissions (name, description, bitmask)
@@ -318,3 +318,104 @@ VALUES ('VIEW_CHANNEL', 'Permission to view channels', 1),
        ('DEAFEN_MEMBERS', 'Permission to deafen members in voice channels', 262144),
        ('MOVE_MEMBERS', 'Permission to move members between voice channels', 524288);
 
+-- Sample server
+INSERT INTO servers (owner_id, name, description, is_public)
+VALUES ((SELECT id FROM users WHERE username = 'admin'),
+        'Admin Server',
+        'A server created by the admin user.',
+        TRUE);
+
+-- Sample Category
+INSERT INTO categories (server_id, name, position)
+VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        'General',
+        0);
+
+-- Sample Channels
+INSERT INTO channels (server_id, category_id, name, type, position)
+VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id
+         FROM categories
+         WHERE name = 'General'
+           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server')),
+        'general-chat',
+        'TEXT',
+        0),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id
+         FROM categories
+         WHERE name = 'General'
+           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server')),
+        'voice-chat',
+        'VOICE',
+        1);
+
+-- Add admin as server member
+INSERT INTO server_members (server_id, user_id, nickname)
+VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'admin'),
+        'Admin');
+
+-- Add user to server members
+INSERT INTO server_members (server_id, user_id, nickname)
+VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user1'),
+        'User One');
+
+-- Add sample 50 message to general-chat for admin
+CREATE SEQUENCE IF NOT EXISTS channel_messages_id_seq START 1000;
+
+DO
+$$
+    DECLARE
+        channel_id BIGINT;
+        author_id  BIGINT;
+    BEGIN
+        SELECT id
+        INTO channel_id
+        FROM channels
+        WHERE name = 'general-chat'
+          AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
+        SELECT id
+        INTO author_id
+        FROM server_members
+        WHERE user_id = (SELECT id FROM users WHERE username = 'admin')
+          AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
+        FOR i IN 1..50
+            LOOP
+                INSERT INTO channel_messages (id, channel_id, author_id, content)
+                VALUES (nextval('channel_messages_id_seq'),
+                        channel_id,
+                        author_id,
+                        'Sample message number ' || i);
+            END LOOP;
+    END
+$$;
+
+-- Add sample 50 message to general-chat for user1
+DO
+$$
+    DECLARE
+        channel_id BIGINT;
+        author_id  BIGINT;
+    BEGIN
+        SELECT id
+        INTO channel_id
+        FROM channels
+        WHERE name = 'general-chat'
+          AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
+        SELECT id
+        INTO author_id
+        FROM server_members
+        WHERE user_id = (SELECT id FROM users WHERE username = 'user1')
+          AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
+        FOR i IN 1..50
+            LOOP
+                INSERT INTO channel_messages (id, channel_id, author_id, content)
+                VALUES (nextval('channel_messages_id_seq'),
+                        channel_id,
+                        author_id,
+                        'User1 message number ' || i);
+            END LOOP;
+    END
+$$;

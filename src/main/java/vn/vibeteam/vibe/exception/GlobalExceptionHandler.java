@@ -10,15 +10,6 @@ import vn.vibeteam.vibe.dto.common.ErrorResponse;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(value = Exception.class)
-    ResponseEntity<ErrorResponse> handlingRuntimeException(Exception e) {
-        log.error(e.getMessage(), e);
-        ErrorResponse errorResponse = new ErrorResponse();
-        errorResponse.setMessage(e.getMessage());
-        errorResponse.setCode(400);
-        return ResponseEntity.badRequest().body(errorResponse);
-    }
-
     @ExceptionHandler(value = AppException.class)
     ResponseEntity<ErrorResponse> handlingAppException(AppException exception) {
         log.error(exception.getMessage(), exception);
@@ -29,5 +20,14 @@ public class GlobalExceptionHandler {
         errorResponse.setMessage(errorCode.getMessage());
 
         return ResponseEntity.status(errorCode.getStatusCode()).body(errorResponse);
+    }
+
+    @ExceptionHandler(value = Exception.class)
+    ResponseEntity<ErrorResponse> handlingRuntimeException(Exception e) {
+        log.error(e.getMessage(), e);
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setMessage(e.getMessage());
+        errorResponse.setCode(400);
+        return ResponseEntity.badRequest().body(errorResponse);
     }
 }

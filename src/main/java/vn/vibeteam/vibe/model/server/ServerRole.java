@@ -2,6 +2,7 @@ package vn.vibeteam.vibe.model.server;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
 import java.util.HashSet;
@@ -9,6 +10,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "server_roles")
+@SQLRestriction("is_deleted = false")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -45,4 +47,3 @@ public class ServerRole extends BaseEntity {
     @Builder.Default
     private Set<MemberRole> memberRoles = new HashSet<>();
 }
-

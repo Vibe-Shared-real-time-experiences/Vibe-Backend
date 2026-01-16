@@ -3,16 +3,15 @@ package vn.vibeteam.vibe.model.server;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
-import vn.vibeteam.vibe.model.authorization.User;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
 import java.util.List;
-//import com.vladmihalcea.hibernate.type.json.JsonType;
-//import org.hibernate.annotations.Type;
 
 @Entity
 @Table(name = "channel_messages")
+@SQLRestriction("is_deleted = false")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -20,22 +19,15 @@ import java.util.List;
 @Builder
 public class ChannelMessage extends BaseEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "channel_id", nullable = false)
-    private Long channelId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "channel_id", insertable = false, updatable = false)
+    @JoinColumn(name = "channel_id")
     private Channel channel;
 
-    @Column(name = "author_id", nullable = false)
-    private Long authorId;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", insertable = false, updatable = false)
-    private User author;
+    @JoinColumn(name = "author_id")
+    private ServerMember author;
 
     @Column(columnDefinition = "TEXT")
     private String content;
@@ -54,4 +46,3 @@ public class ChannelMessage extends BaseEntity {
     @Column(name = "is_edited")
     private Boolean isEdited;
 }
-

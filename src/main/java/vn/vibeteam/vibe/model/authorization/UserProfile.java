@@ -2,10 +2,12 @@ package vn.vibeteam.vibe.model.authorization;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
 @Entity
 @Table(name = "user_profiles")
+@SQLRestriction("is_deleted = false")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -32,4 +34,3 @@ public class UserProfile extends BaseEntity {
     @Column(name = "is_public")
     private Boolean isPublic;
 }
-

@@ -1,6 +1,7 @@
 package vn.vibeteam.vibe.model.server;
 
 import lombok.*;
+import vn.vibeteam.vibe.common.MessageAttachmentType;
 
 import java.io.Serializable;
 
@@ -11,7 +12,7 @@ import java.io.Serializable;
 @Builder
 public class MessageAttachment implements Serializable {
     private String url;
-    private String type; // "IMAGE", "VIDEO", "FILE"
+    private MessageAttachmentType type;
     private String contentType; // "image/png", "video/mp4"
     private int width;
     private int height;
