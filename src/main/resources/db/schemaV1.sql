@@ -6,7 +6,7 @@
 CREATE TABLE users
 (
     id         BIGSERIAL PRIMARY KEY,
-    username   VARCHAR(50) NOT NULL,
+    username   VARCHAR(255) NOT NULL,
     password   TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE,
@@ -16,14 +16,15 @@ CREATE TABLE users
 
 CREATE TABLE user_profiles
 (
-    user_id      BIGSERIAL PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
-    display_name VARCHAR(100),
-    avatar_url   TEXT,
-    bio          TEXT,
-    created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    is_public    BOOLEAN                  DEFAULT TRUE,
-    is_deleted   BOOLEAN                  DEFAULT FALSE
+    user_id       BIGSERIAL PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    display_name  VARCHAR(100),
+    date_of_birth DATE NOT NULL,
+    avatar_url    TEXT,
+    bio           TEXT,
+    created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_public     BOOLEAN                  DEFAULT TRUE,
+    is_deleted    BOOLEAN                  DEFAULT FALSE
 );
 
 CREATE TABLE roles
@@ -280,7 +281,8 @@ VALUES ('FULL_ACCESS', 'Permission to have full access to all features'),
 
 INSERT INTO roles (name, description)
 VALUES ('ADMIN', 'Administrator with full permissions'),
-       ('MODERATOR', 'Moderator with limited management permissions');
+       ('MODERATOR', 'Moderator with limited management permissions'),
+       ('USER', 'Regular user with standard permissions');
 
 INSERT INTO role_permissions (role_id, permission_id)
 VALUES ((SELECT id FROM roles WHERE name = 'ADMIN'),
@@ -288,12 +290,26 @@ VALUES ((SELECT id FROM roles WHERE name = 'ADMIN'),
 
 -- Sample user & admin account
 INSERT INTO Users (username, password)
-VALUES ('admin', '$2a$10$NL.fF5iJyANZKrvzuCjUT.V7DQrFE5oddrZ1vIouVi07UimJ2tX1y'),
-       ('user1', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.');
+VALUES ('admin@gmail.com', '$2a$10$NL.fF5iJyANZKrvzuCjUT.V7DQrFE5oddrZ1vIouVi07UimJ2tX1y'),
+       ('user1@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.');
+
+INSERT INTO user_profiles (user_id, display_name, date_of_birth, avatar_url, bio)
+VALUES ((SELECT id FROM users WHERE username = 'admin@gmail.com'),
+        'Admin',
+        '1990-01-01',
+        'https://example.com/avatars/admin.png',
+        'I am the administrator of this platform.'),
+       ((SELECT id FROM users WHERE username = 'user1@gmail.com'),
+        'User One',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.');
 
 INSERT INTO user_roles (user_id, role_id)
-VALUES ((SELECT id FROM users WHERE username = 'admin'),
-        (SELECT id FROM roles WHERE name = 'ADMIN'));
+VALUES ((SELECT id FROM users WHERE username = 'admin@gmail.com'),
+        (SELECT id FROM roles WHERE name = 'ADMIN')),
+       ((SELECT id FROM users WHERE username = 'user1@gmail.com'),
+        (SELECT id FROM roles WHERE name = 'USER'));
 
 -- Discord-like server permissions with bitmask values (20 most common ones)
 INSERT INTO server_permissions (name, description, bitmask)
@@ -320,7 +336,7 @@ VALUES ('VIEW_CHANNEL', 'Permission to view channels', 1),
 
 -- Sample server
 INSERT INTO servers (owner_id, name, description, is_public)
-VALUES ((SELECT id FROM users WHERE username = 'admin'),
+VALUES ((SELECT id FROM users WHERE username = 'admin@gmail.com'),
         'Admin Server',
         'A server created by the admin user.',
         TRUE);
@@ -353,13 +369,13 @@ VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
 -- Add admin as server member
 INSERT INTO server_members (server_id, user_id, nickname)
 VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
-        (SELECT id FROM users WHERE username = 'admin'),
+        (SELECT id FROM users WHERE username = 'admin@gmail.com'),
         'Admin');
 
 -- Add user to server members
 INSERT INTO server_members (server_id, user_id, nickname)
 VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
-        (SELECT id FROM users WHERE username = 'user1'),
+        (SELECT id FROM users WHERE username = 'user1@gmail.com'),
         'User One');
 
 -- Add sample 50 message to general-chat for admin
@@ -379,7 +395,7 @@ $$
         SELECT id
         INTO author_id
         FROM server_members
-        WHERE user_id = (SELECT id FROM users WHERE username = 'admin')
+        WHERE user_id = (SELECT id FROM users WHERE username = 'admin@gmail.com')
           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
         FOR i IN 1..50
             LOOP
@@ -407,7 +423,7 @@ $$
         SELECT id
         INTO author_id
         FROM server_members
-        WHERE user_id = (SELECT id FROM users WHERE username = 'user1')
+        WHERE user_id = (SELECT id FROM users WHERE username = 'user1@gmail.com')
           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
         FOR i IN 1..50
             LOOP

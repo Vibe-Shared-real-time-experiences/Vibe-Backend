@@ -9,15 +9,21 @@ import vn.vibeteam.vibe.dto.request.authentication.LoginRequest;
 import vn.vibeteam.vibe.dto.request.authentication.LogoutRequest;
 import vn.vibeteam.vibe.dto.request.authentication.RegisterRequest;
 import vn.vibeteam.vibe.dto.response.authentication.AuthenticationResponse;
+import vn.vibeteam.vibe.dto.response.authentication.UserBaseInfo;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
+import vn.vibeteam.vibe.model.authorization.Role;
 import vn.vibeteam.vibe.model.authorization.User;
+import vn.vibeteam.vibe.model.authorization.UserProfile;
+import vn.vibeteam.vibe.model.authorization.UserRole;
+import vn.vibeteam.vibe.repository.user.RoleRepository;
 import vn.vibeteam.vibe.repository.user.UserRepository;
 import vn.vibeteam.vibe.service.auth.AuthenticationService;
 import vn.vibeteam.vibe.service.auth.TokenBlacklistService;
 import vn.vibeteam.vibe.util.JwtUtil;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +35,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final TokenBlacklistService tokenBlacklistService;
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     @Override
     public AuthenticationResponse login(LoginRequest loginRequest) {
@@ -42,6 +49,49 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
+        log.info("User {} logged in successfully", loginRequest.getUsername());
+        return createAuthenticationResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthenticationResponse register(RegisterRequest registerRequest) {
+        log.info("Register attempt for email: {}", registerRequest.getEmail());
+
+        if (userRepository.existsByUsername(registerRequest.getEmail())) {
+            log.warn("Username {} is already taken", registerRequest.getEmail());
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        List<Role> roles = roleRepository.findUserDefaultRoles().orElse(new ArrayList<>());
+
+        User newUser = User.builder()
+                           .username(registerRequest.getEmail())
+                           .password(passwordEncoder.encode(registerRequest.getPassword()))
+                           .isActive(true)
+                           .build();
+
+        Set<UserRole> userRoles = roles.stream().map(role ->
+                                                             UserRole.builder()
+                                                                     .role(role)
+                                                                     .build()
+        ).collect(Collectors.toSet());
+
+        UserProfile userProfile = UserProfile.builder()
+                                             .displayName(registerRequest.getDisplayName())
+                                             .dateOfBirth(registerRequest.getDateOfBirth())
+                                             .build();
+
+        userRoles.forEach(newUser::addUserRole);
+        newUser.setUserProfile(userProfile);
+
+        userRepository.save(newUser);
+
+        log.info("User {} registered successfully", newUser.getUsername());
+        return createAuthenticationResponse(newUser);
+    }
+
+    private AuthenticationResponse createAuthenticationResponse(User user) {
         List<String> roleNames = userRepository.findUserRolesByUserId(user.getId())
                                                .orElse(new ArrayList<>())
                                                .stream().map(userRole -> userRole.getRole().getName())
@@ -49,34 +99,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("roles", roleNames);
 
-        log.info("User {} logged in successfully", loginRequest.getUsername());
         return AuthenticationResponse.builder()
                                      .accessToken(jwtUtil.generateToken(user.getId().toString(), claims))
                                      .refreshToken(jwtUtil.generateRefreshToken(user.getId().toString(), claims))
-                                     .build();
-    }
-
-    @Override
-    @Transactional
-    public AuthenticationResponse register(RegisterRequest registerRequest) {
-        log.info("Register attempt for user: {}", registerRequest.getUsername());
-
-        if (userRepository.existsByUsername(registerRequest.getUsername())) {
-            log.warn("Username {} is already taken", registerRequest.getUsername());
-            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
-        }
-
-        User newUser = User.builder()
-                           .username(registerRequest.getUsername())
-                           .password(passwordEncoder.encode(registerRequest.getPassword()))
-                           .build();
-        User savedUser = userRepository.save(newUser);
-
-        // Assign default role to the new user
-        log.info("User {} registered successfully", savedUser.getUsername());
-        return AuthenticationResponse.builder()
-                                     .accessToken(jwtUtil.generateToken(savedUser.getId().toString(), Map.of()))
-                                     .refreshToken(jwtUtil.generateRefreshToken(savedUser.getId().toString(), Map.of()))
+                                     .userBaseInfo(UserBaseInfo.builder()
+                                                               .id(String.valueOf(user.getId()))
+                                                               .displayName(user.getUserProfile().getDisplayName())
+                                                               .avatarUrl(user.getUserProfile().getAvatarUrl())
+                                                               .roles(roleNames)
+                                                               .build())
                                      .build();
     }
 
