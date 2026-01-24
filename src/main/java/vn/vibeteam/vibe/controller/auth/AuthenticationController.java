@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
 import vn.vibeteam.vibe.dto.request.authentication.LoginRequest;
 import vn.vibeteam.vibe.dto.request.authentication.LogoutRequest;
+import vn.vibeteam.vibe.dto.request.authentication.RefreshRequest;
 import vn.vibeteam.vibe.dto.request.authentication.RegisterRequest;
 import vn.vibeteam.vibe.dto.response.authentication.AuthenticationResponse;
 import vn.vibeteam.vibe.service.auth.AuthenticationService;
@@ -50,6 +51,17 @@ public class AuthenticationController {
         return ApiResponse.<AuthenticationResponse>builder()
                           .code(200)
                           .message("Login successful")
+                          .data(response)
+                          .build();
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<AuthenticationResponse> refreshToken(@RequestBody RefreshRequest refreshRequest) {
+        AuthenticationResponse response = authenticationService.refreshToken(refreshRequest);
+
+        return ApiResponse.<AuthenticationResponse>builder()
+                          .code(200)
+                          .message("Token refreshed successfully")
                           .data(response)
                           .build();
     }

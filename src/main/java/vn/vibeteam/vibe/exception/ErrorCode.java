@@ -20,6 +20,7 @@ public enum ErrorCode {
     INVALID_REQUEST(400, "Invalid request", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED(403, "Unauthorized", HttpStatus.FORBIDDEN),
     UNAUTHORIZED_ACTION(403, "Unauthorized action", HttpStatus.FORBIDDEN),
+    INVALID_REFRESH_TOKEN(401, "Invalid refresh token", HttpStatus.UNAUTHORIZED),
 
     MESSAGE_NOT_FOUND(404, "Message not found", HttpStatus.NOT_FOUND)
     ;
