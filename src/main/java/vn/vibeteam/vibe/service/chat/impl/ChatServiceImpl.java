@@ -25,6 +25,7 @@ import vn.vibeteam.vibe.model.server.MessageAttachment;
 import vn.vibeteam.vibe.model.server.ServerMember;
 import vn.vibeteam.vibe.repository.chat.ChannelRepository;
 import vn.vibeteam.vibe.repository.chat.MessageRepository;
+import vn.vibeteam.vibe.repository.chat.ServerMemberRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
 import vn.vibeteam.vibe.service.chat.ChatService;
 import vn.vibeteam.vibe.util.SecurityUtils;
@@ -42,6 +43,7 @@ public class ChatServiceImpl implements ChatService {
     private final ServerRepository serverRepository;
     private final ChannelRepository channelRepository;
     private final MessageRepository messageRepository;
+    private final ServerMemberRepository serverMemberRepository;
 
     private final SnowflakeIdGenerator idGenerator;
     private final SimpMessagingTemplate messagingTemplate;
@@ -115,10 +117,16 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public CursorResponse<ChannelHistoryResponse> getChannelMessages(String channelId, String cursor, int limit) {
+    public CursorResponse<ChannelHistoryResponse> getChannelMessages(String channelId, String cursor,
+                                                                     int limit) {
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
 
-        // 1. Fetch messages
+        // 1. Validate channel
+        Long serverId = channelRepository.findServerIdById(Long.valueOf(channelId))
+                                         .orElseThrow(() -> new AppException(ErrorCode.CHANNEL_NOT_IN_SERVER))
+                                         .getServer().getId();
+
+        // 2. Fetch messages
         Pageable pageable = PageRequest.of(
                 0,      // Using cursor pagination, so page number is always 0
                 limit + 1,          // Fetch one extra to determine if there's a next page
@@ -133,18 +141,26 @@ public class ChatServiceImpl implements ChatService {
             messages = messageRepository.findLatestMessages(Long.parseLong(channelId), pageable);
         }
 
-        // 2. Create response
-        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages);
+        // 3. Fetch member infos
+        Set<Long> senderIds = messages.stream()
+                                      .map(msg -> msg.getAuthor().getId())
+                                      .collect(Collectors.toSet());
+        Set<ServerMember> memberInfos =
+                serverMemberRepository.findDetailsByServerIdAndIn(serverId, senderIds);
 
+        // 4. Create response (messages + member summarize info)
+        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages, memberInfos);
+
+
+        // 5. Determine next cursor
         boolean hasNext = messages.size() > limit;
         if (hasNext) {
             messages = messages.subList(0, limit);
         }
 
-        // 3. Determine next cursor
         String nextCursor = null;
         if (hasNext) {
-            Long lastMessageId = messages.get(messages.size() - 1).getId();
+            Long lastMessageId = messages.getLast().getId();
             nextCursor = lastMessageId.toString();
         }
 
@@ -163,7 +179,8 @@ public class ChatServiceImpl implements ChatService {
 
         // 1. Find message
         ChannelMessage channelMessage = messageRepository.findById(Long.valueOf(messageId))
-                                                         .orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
+                                                         .orElseThrow(
+                                                                 () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
 
         // 2. Verify author
         boolean isOwner = isAuthor(channelMessage.getAuthor().getId());
@@ -186,7 +203,8 @@ public class ChatServiceImpl implements ChatService {
 
         // 1. Find message
         ChannelMessage channelMessage = messageRepository.findById(Long.valueOf(messageId))
-                                                         .orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
+                                                         .orElseThrow(
+                                                                 () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
 
         // 2. Verify author
         boolean isOwner = isAuthor(channelMessage.getAuthor().getId());
@@ -212,7 +230,8 @@ public class ChatServiceImpl implements ChatService {
         return adminId.equals(currentUserId);
     }
 
-    private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages) {
+    private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages,
+                                                               Set<ServerMember> memberInfos) {
         List<MessageResponse> messageResponses = messages.stream().map(
                 msg -> MessageResponse.builder()
                                       .id(msg.getId())
@@ -222,32 +241,42 @@ public class ChatServiceImpl implements ChatService {
                                       .attachments(
                                               msg.getAttachmentMetadata() != null ?
                                                       msg.getAttachmentMetadata().stream().map(
-                                                              att -> MessageAttachmentResponse.builder()
-                                                                                              .url(att.getUrl())
-                                                                                              .type(att.getType())
-                                                                                              .contentType(
-                                                                                                      att.getContentType())
-                                                                                              .width(att.getWidth())
-                                                                                              .height(att.getHeight())
-                                                                                              .size(att.getSize())
-                                                                                              .build()
+                                                              ChatServiceImpl::mapToAttachmentResponse
                                                       ).toList() : null
                                       )
+                                      .createdAt(msg.getCreatedAt())
+                                      .updatedAt(msg.getUpdatedAt())
                                       .build()
         ).toList();
 
-        Set<MemberSummaryInfoResponse> memberInfos = messages.stream().map(
-                msg -> MemberSummaryInfoResponse.builder()
-                                                .memberId(msg.getAuthor().getId())
-                                                .displayName(msg.getAuthor().getNickname())
-                                                .avatarUrl(msg.getAuthor().getAvatarUrl())
-                                                .build()
+        Set<MemberSummaryInfoResponse> memberSummaryInfos = memberInfos.stream().map(
+                member -> {
+                    String finalName =
+                            member.getNickname() != null ? member.getNickname() : member.getUser().getUsername();
+                    return MemberSummaryInfoResponse.builder()
+                                                    .memberId(member.getId())
+                                                    .displayName(finalName)
+                                                    .avatarUrl(member.getUser().getUserProfile().getAvatarUrl())
+                                                    .build();
+                }
         ).collect(Collectors.toSet());
 
         return ChannelHistoryResponse.builder()
                                      .messages(messageResponses)
-                                     .memberInfos(memberInfos)
+                                     .memberInfos(memberSummaryInfos)
                                      .build();
+    }
+
+    private static MessageAttachmentResponse mapToAttachmentResponse(MessageAttachment att) {
+        return MessageAttachmentResponse.builder()
+                                        .url(att.getUrl())
+                                        .type(att.getType())
+                                        .contentType(
+                                                att.getContentType())
+                                        .width(att.getWidth())
+                                        .height(att.getHeight())
+                                        .size(att.getSize())
+                                        .build();
     }
 
     private WsEvent<WsMessageResponse> createWsChannelEvent(ChannelMessage channelMessage) {
@@ -259,7 +288,10 @@ public class ChatServiceImpl implements ChatService {
                                  .author(WsUserSummary.builder()
                                                       .id(channelMessage.getAuthor().getId())
                                                       .username(channelMessage.getAuthor().getNickname())
-                                                      .avatarUrl(channelMessage.getAuthor().getAvatarUrl())
+                                                      .avatarUrl(channelMessage.getAuthor()
+                                                                               .getUser()
+                                                                               .getUserProfile()
+                                                                               .getAvatarUrl())
                                                       .build())
                                  .createdAt(channelMessage.getCreatedAt().toString());
         if (channelMessage.getAttachmentMetadata() != null && !channelMessage.getAttachmentMetadata()

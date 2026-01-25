@@ -32,9 +32,6 @@ public class ServerMember {
     @Column(name = "nickname")
     private String nickname;
 
-    @Column(name = "avatar_url")
-    private String avatarUrl;
-
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
 

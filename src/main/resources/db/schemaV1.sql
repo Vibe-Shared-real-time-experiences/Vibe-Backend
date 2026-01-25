@@ -138,8 +138,7 @@ CREATE TABLE server_members
     id         BIGSERIAL PRIMARY KEY,
     server_id  BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
     user_id    BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    nickname   VARCHAR(32),
-    avatar_url TEXT,
+    nickname   VARCHAR(100),
     joined_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_active  BOOLEAN   NOT NULL       DEFAULT TRUE,
     UNIQUE (server_id, user_id)

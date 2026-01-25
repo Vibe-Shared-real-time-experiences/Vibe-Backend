@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import vn.vibeteam.vibe.model.server.Channel;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ChannelRepository extends JpaRepository<Channel, Long> {
@@ -16,4 +17,6 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
     @Modifying
     @Query("UPDATE Channel c SET c.isDeleted = true WHERE c.id = :channelId")
     void deleteChannelById(Long channelId);
+
+    Optional<Channel> findServerIdById(Long channelId);
 }

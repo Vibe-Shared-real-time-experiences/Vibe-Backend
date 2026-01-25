@@ -14,6 +14,7 @@ public enum ErrorCode {
 
     CHANNEL_NOT_FOUND(404, "Channel not found", HttpStatus.NOT_FOUND),
     SERVER_NOT_FOUND(404, "Server not found", HttpStatus.NOT_FOUND),
+    CHANNEL_NOT_IN_SERVER(403, "Channel not in server", HttpStatus.FORBIDDEN),
     MEMBER_NOT_IN_SERVER(403, "Member not in server", HttpStatus.FORBIDDEN),
     RESOURCE_NOT_FOUND(404, "Resource not found", HttpStatus.NOT_FOUND),
 

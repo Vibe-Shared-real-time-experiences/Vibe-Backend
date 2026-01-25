@@ -3,18 +3,13 @@ package vn.vibeteam.vibe.controller.chat;
 import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
 import vn.vibeteam.vibe.dto.common.CursorResponse;
 import vn.vibeteam.vibe.dto.request.chat.CreateMessageRequest;
 import vn.vibeteam.vibe.dto.response.chat.ChannelHistoryResponse;
 import vn.vibeteam.vibe.dto.response.chat.CreateMessageResponse;
-import vn.vibeteam.vibe.dto.response.chat.MessageResponse;
 import vn.vibeteam.vibe.service.chat.ChatService;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -32,7 +27,8 @@ public class MessageController {
             @Max(value = 50, message = "The  'limit' parameter cannot exceed 50.") int limit) {
 
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
-        CursorResponse<ChannelHistoryResponse> channelHistoryResponse = chatService.getChannelMessages(channelId, cursor, limit);
+        CursorResponse<ChannelHistoryResponse> channelHistoryResponse = chatService.getChannelMessages(channelId,
+                                                                                                         cursor, limit);
 
         return ApiResponse.<CursorResponse<ChannelHistoryResponse>>builder()
                           .code(200)
