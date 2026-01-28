@@ -1,4 +1,4 @@
-package vn.vibeteam.vibe.dto.request.chat;
+package vn.vibeteam.vibe.dto.response.media;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +8,7 @@ import vn.vibeteam.vibe.common.MessageAttachmentType;
 @RequiredArgsConstructor
 @Getter
 @Setter
-public class MessageAttachment {
+public class UploadMediaResponse {
     private String url;
     private MessageAttachmentType type;
     private String contentType; // "image/png", "video/mp4"

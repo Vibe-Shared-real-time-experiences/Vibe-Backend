@@ -3,6 +3,7 @@ package vn.vibeteam.vibe.service.chat.impl;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -50,7 +51,6 @@ public class ChatServiceImpl implements ChatService {
     private final SimpMessagingTemplate messagingTemplate;
     private static final String WEBSOCKET_SERVER_DESTINATION_PREFIX = "/topic/servers/";
     private static final String WEBSOCKET_CHANNEL_DESTINATION_PREFIX = "/topic/channels/";
-    private static final String ATTACHMENT_BASE_URL = "https://vibe-attachments.s3.amazonaws.com/";
 
     private final SecurityUtils securityUtils;
 
@@ -65,7 +65,12 @@ public class ChatServiceImpl implements ChatService {
 
         Long currentUserId = securityUtils.getCurrentUserId();
 
-        ServerMember member = serverRepository.findMemberById(
+        log.info("{}, {}",
+                channel.getServer().getId(),
+                currentUserId
+        );
+
+        ServerMember member = serverRepository.findMemberByServerIdAndUserId(
                 channel.getServer().getId(),
                 currentUserId
         ).orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_IN_SERVER));
@@ -81,11 +86,9 @@ public class ChatServiceImpl implements ChatService {
                               .content(request.getContent());
 
         if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            String url = ATTACHMENT_BASE_URL + messageId + "/";
-
             List<MessageAttachment> attachments = request.getAttachments().stream().map(
                     att -> MessageAttachment.builder()
-                                            .url(url)
+                                            .url(att.getUrl())
                                             .type(att.getType())
                                             .contentType(att.getContentType())
                                             .width(att.getWidth())
@@ -334,7 +337,7 @@ public class ChatServiceImpl implements ChatService {
     private CreateMessageResponse mapToCreateMessageResponse(ChannelMessage channelMessage, String key) {
         return CreateMessageResponse.builder()
                                     .messageId(channelMessage.getId().toString())
-                                    .key(key)
+                                    .clientUniqueId(key)
                                     .status(MessageStatus.SUCCESS)
                                     .build();
     }

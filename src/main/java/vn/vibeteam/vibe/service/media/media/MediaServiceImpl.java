@@ -10,12 +10,17 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import vn.vibeteam.vibe.common.MediaType;
+import vn.vibeteam.vibe.common.MessageAttachmentType;
+import vn.vibeteam.vibe.dto.request.chat.MessageAttachment;
 import vn.vibeteam.vibe.dto.request.media.UploadMediaRequest;
+import vn.vibeteam.vibe.dto.response.media.UploadMediaResponse;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
 import vn.vibeteam.vibe.service.media.MediaService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Set;
@@ -41,26 +46,26 @@ public class MediaServiceImpl implements MediaService {
             "video/mp4", "video/mpeg", "video/quicktime" // Video
     );
 
-    public String uploadFile(UploadMediaRequest request) {
-        if (request.getFile().isEmpty()) {
+    public UploadMediaResponse uploadFile(UploadMediaRequest request) {
+        MultipartFile file = request.getFile();
+
+        if (file.isEmpty()) {
             throw new AppException(ErrorCode.FILE_EMPTY);
         }
 
-        String originalFilename = request.getFile().getOriginalFilename();
-        log.info("Uploading file: {}", request.getFile().getOriginalFilename());
+        String originalFilename = file.getOriginalFilename();
+        log.info("Uploading file: {}", file.getOriginalFilename());
 
         try {
 
             // 1. Validate file type base on binary (InputStream)
-            String detectedMimeType = tika.detect(request.getFile().getInputStream());
-            log.info("Detected MIME type: {}", detectedMimeType);
+            String detectedMimeType = tika.detect(file.getInputStream());
 
             if (!ALLOWED_MIME_TYPES.contains(detectedMimeType)) {
                 throw new AppException(ErrorCode.UN_SUPPORTED_FILE_TYPE);
             }
 
-            // 2. Create unique file name (UUID + original file extension)
-            // For ex: avatar.png -> 550e8400-e29b...png
+            // 2. Create object key based on media type
             String extension = extractExtension(originalFilename);
             String objectKey = "";
 
@@ -91,17 +96,43 @@ public class MediaServiceImpl implements MediaService {
                                                      .build();
 
             // 3. Push file to MinIO server
-            s3Client.putObject(putOb, RequestBody.fromBytes(request.getFile().getBytes()));
+            s3Client.putObject(putOb, RequestBody.fromBytes(file.getBytes()));
 
-            // 4. Return file URL for FE to access
+            // 4. Return file metadata info for FE
             String finalObjectKey = objectKey;
             String finalUrl = s3Client.utilities().getUrl(builder -> builder.bucket(bucketName).key(finalObjectKey)).toExternalForm();
-            log.info("File uploaded successfully: {}", finalUrl);
 
-            return finalUrl;
+            UploadMediaResponse uploadMediaResponse = createUploadMediaResponse(file, finalUrl);
+            log.info("File uploaded successfully: {}", uploadMediaResponse);
+
+            return uploadMediaResponse;
         } catch (IOException e) {
             throw new RuntimeException("Error when upload file " + e.getMessage());
         }
+    }
+
+    private UploadMediaResponse createUploadMediaResponse(MultipartFile file, String finalUrl) {
+        UploadMediaResponse uploadMediaResponse = new UploadMediaResponse();
+        uploadMediaResponse.setUrl(finalUrl);
+        uploadMediaResponse.setContentType(file.getContentType());
+        uploadMediaResponse.setSize(file.getSize());
+
+        if (file.getContentType() != null && file.getContentType().startsWith("image/")) {
+            try {
+                BufferedImage image = ImageIO.read(file.getInputStream());
+                if (image != null) {
+                    uploadMediaResponse.setWidth(image.getWidth());
+                    uploadMediaResponse.setHeight(image.getHeight());
+                    uploadMediaResponse.setType(MessageAttachmentType.IMAGE);
+                }
+            } catch (Exception e) {
+                log.warn("Can`t read image size: {}", e.getMessage());
+            }
+        } else {
+            uploadMediaResponse.setType(MessageAttachmentType.FILE);
+        }
+
+        return uploadMediaResponse;
     }
 
     private String extractExtension(String filename) {
