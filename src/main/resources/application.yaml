@@ -21,6 +21,14 @@ spring:
   cache:
     type: redis
 
+# MinIO / S3 Configuration
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: vibe-storage
+  region: us-east-1
+
 security:
   jwt:
     secret-key: "91f6b3d88bdd0c39fa408b0ee613cdd4e83c774c9440e96c3107e1dc8604a4c8"

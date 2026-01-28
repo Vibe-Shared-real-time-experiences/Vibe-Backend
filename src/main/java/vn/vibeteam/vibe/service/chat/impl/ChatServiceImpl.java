@@ -3,6 +3,7 @@ package vn.vibeteam.vibe.service.chat.impl;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -54,6 +55,7 @@ public class ChatServiceImpl implements ChatService {
     private final SecurityUtils securityUtils;
 
     @Override
+    @Transactional
     public CreateMessageResponse sendMessage(String channelId, CreateMessageRequest request) {
         log.info("Sending message to channelId: {}", channelId);
 
@@ -75,6 +77,7 @@ public class ChatServiceImpl implements ChatService {
                               .id(messageId)
                               .channel(channel)
                               .author(member)
+                              .clientUniqueId(request.getClientUniqueId())
                               .content(request.getContent());
 
         if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
@@ -94,9 +97,18 @@ public class ChatServiceImpl implements ChatService {
             channelMessageBuilder.attachmentMetadata(attachments);
         }
 
-        // 3. Persist message
         ChannelMessage channelMessages = channelMessageBuilder.build();
-        channelMessages = messageRepository.save(channelMessages);
+
+        // 3. Persist message
+        try {
+            channelMessages = messageRepository.save(channelMessages);
+        } catch (DataIntegrityViolationException e) {
+            log.info("Duplicate message key detected: {}", request.getClientUniqueId());
+            ChannelMessage channelMessage = messageRepository.findByClientUniqueId(request.getClientUniqueId())
+                                                             .orElse(null);
+
+            return mapToCreateMessageResponse(channelMessage, request.getClientUniqueId());
+        }
 
         // 4. Broadcast message (server + channel)
         WsEvent<WsMessageResponse> wsChannelEvent = createWsChannelEvent(channelMessages);
@@ -113,7 +125,7 @@ public class ChatServiceImpl implements ChatService {
 
         // 5. Return response
         log.info("Message sent successfully with id: {}", channelMessages.getId());
-        return mapToCreateMessageResponse(channelMessages, request.getKey());
+        return mapToCreateMessageResponse(channelMessages, request.getClientUniqueId());
     }
 
     @Override

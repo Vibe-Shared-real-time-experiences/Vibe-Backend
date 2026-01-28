@@ -23,7 +23,10 @@ public enum ErrorCode {
     UNAUTHORIZED_ACTION(403, "Unauthorized action", HttpStatus.FORBIDDEN),
     INVALID_REFRESH_TOKEN(401, "Invalid refresh token", HttpStatus.UNAUTHORIZED),
 
-    MESSAGE_NOT_FOUND(404, "Message not found", HttpStatus.NOT_FOUND)
+    MESSAGE_NOT_FOUND(404, "Message not found", HttpStatus.NOT_FOUND),
+
+    FILE_EMPTY(400, "File is empty", HttpStatus.BAD_REQUEST),
+    UN_SUPPORTED_FILE_TYPE(415, "Unsupported file type", HttpStatus.UNSUPPORTED_MEDIA_TYPE)
     ;
 
     private int code;
