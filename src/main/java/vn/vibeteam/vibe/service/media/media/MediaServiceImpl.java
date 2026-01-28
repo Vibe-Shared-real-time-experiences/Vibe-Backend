@@ -11,7 +11,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import vn.vibeteam.vibe.common.MediaType;
 import vn.vibeteam.vibe.common.MessageAttachmentType;
-import vn.vibeteam.vibe.dto.request.chat.MessageAttachment;
 import vn.vibeteam.vibe.dto.request.media.UploadMediaRequest;
 import vn.vibeteam.vibe.dto.response.media.UploadMediaResponse;
 import vn.vibeteam.vibe.exception.AppException;
@@ -121,13 +120,19 @@ public class MediaServiceImpl implements MediaService {
             try {
                 BufferedImage image = ImageIO.read(file.getInputStream());
                 if (image != null) {
+                    uploadMediaResponse.setType(MessageAttachmentType.IMAGE);
                     uploadMediaResponse.setWidth(image.getWidth());
                     uploadMediaResponse.setHeight(image.getHeight());
-                    uploadMediaResponse.setType(MessageAttachmentType.IMAGE);
                 }
             } catch (Exception e) {
                 log.warn("Can`t read image size: {}", e.getMessage());
             }
+        } else if (file.getContentType() != null && file.getContentType().startsWith("video/")) {
+            uploadMediaResponse.setType(MessageAttachmentType.VIDEO);
+
+            // TODO: Replace with real video dimension extraction
+            uploadMediaResponse.setWidth(0);
+            uploadMediaResponse.setHeight(0);
         } else {
             uploadMediaResponse.setType(MessageAttachmentType.FILE);
         }

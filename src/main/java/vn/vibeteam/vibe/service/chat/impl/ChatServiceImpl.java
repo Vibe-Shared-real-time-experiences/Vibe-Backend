@@ -91,9 +91,9 @@ public class ChatServiceImpl implements ChatService {
                                             .url(att.getUrl())
                                             .type(att.getType())
                                             .contentType(att.getContentType())
-                                            .width(att.getWidth())
-                                            .height(att.getHeight())
-                                            .size(att.getSize())
+                                            .width(att.getWidth() != null ? att.getWidth() : 0)
+                                            .height(att.getHeight() != null ? att.getHeight() : 0)
+                                            .size(att.getSize() != null ? att.getSize() : 0L)
                                             .build()
             ).toList();
 
