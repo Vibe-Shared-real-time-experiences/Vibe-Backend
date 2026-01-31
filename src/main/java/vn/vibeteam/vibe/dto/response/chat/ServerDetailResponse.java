@@ -3,7 +3,7 @@ package vn.vibeteam.vibe.dto.response.chat;
 import lombok.*;
 
 import java.io.Serializable;
-import java.util.Set;
+import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,5 +17,5 @@ public class ServerDetailResponse implements Serializable {
     private String iconUrl;
     private boolean publicAccess;
     private boolean active;
-    private Set<CategoryResponse> categories;
+    private List<CategoryResponse> categories;
 }

@@ -10,7 +10,7 @@ import java.io.Serializable;
 @Getter
 @Builder
 public class CreateMessageResponse implements Serializable {
-    private String key;
+    private String clientUniqueId;
     private String messageId;
     private MessageStatus status;
 }

@@ -29,6 +29,9 @@ public class ChannelMessage extends BaseEntity {
     @JoinColumn(name = "author_id")
     private ServerMember author;
 
+    @Column(name = "client_unique_id")
+    private String clientUniqueId;
+
     @Column(columnDefinition = "TEXT")
     private String content;
 

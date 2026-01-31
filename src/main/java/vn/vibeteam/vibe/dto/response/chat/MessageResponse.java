@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @NoArgsConstructor
@@ -18,4 +19,6 @@ public class MessageResponse {
     private String content;
     private List<MessageAttachmentResponse> attachments;
     private MessageMetadataResponse metadata;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

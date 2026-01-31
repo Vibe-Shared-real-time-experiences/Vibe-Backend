@@ -138,8 +138,7 @@ CREATE TABLE server_members
     id         BIGSERIAL PRIMARY KEY,
     server_id  BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
     user_id    BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    nickname   VARCHAR(32),
-    avatar_url TEXT,
+    nickname   VARCHAR(100),
     joined_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_active  BOOLEAN   NOT NULL       DEFAULT TRUE,
     UNIQUE (server_id, user_id)
@@ -182,6 +181,7 @@ CREATE TABLE channel_messages
     id          BIGINT PRIMARY KEY,
     channel_id  BIGSERIAL NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
     author_id   BIGSERIAL NOT NULL REFERENCES server_members (id),
+    client_unique_id VARCHAR(100) NOT NULL UNIQUE,
     content     TEXT,
     -- List of jsonb objects with attachment info
     attachments JSONB,
@@ -399,10 +399,11 @@ $$
           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
         FOR i IN 1..50
             LOOP
-                INSERT INTO channel_messages (id, channel_id, author_id, content)
+                INSERT INTO channel_messages (id, channel_id, author_id, client_unique_id, content)
                 VALUES (nextval('channel_messages_id_seq'),
                         channel_id,
                         author_id,
+                        nextval('channel_messages_id_seq')::TEXT,
                         'Sample message number ' || i);
             END LOOP;
     END
@@ -427,10 +428,11 @@ $$
           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
         FOR i IN 1..50
             LOOP
-                INSERT INTO channel_messages (id, channel_id, author_id, content)
+                INSERT INTO channel_messages (id, channel_id, author_id, client_unique_id, content)
                 VALUES (nextval('channel_messages_id_seq'),
                         channel_id,
                         author_id,
+                        nextval('channel_messages_id_seq')::TEXT,
                         'User1 message number ' || i);
             END LOOP;
     END

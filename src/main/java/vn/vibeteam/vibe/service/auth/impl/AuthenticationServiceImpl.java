@@ -7,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import vn.vibeteam.vibe.dto.request.authentication.LoginRequest;
 import vn.vibeteam.vibe.dto.request.authentication.LogoutRequest;
+import vn.vibeteam.vibe.dto.request.authentication.RefreshRequest;
 import vn.vibeteam.vibe.dto.request.authentication.RegisterRequest;
 import vn.vibeteam.vibe.dto.response.authentication.AuthenticationResponse;
 import vn.vibeteam.vibe.dto.response.authentication.UserBaseInfo;
@@ -91,24 +92,21 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return createAuthenticationResponse(newUser);
     }
 
-    private AuthenticationResponse createAuthenticationResponse(User user) {
-        List<String> roleNames = userRepository.findUserRolesByUserId(user.getId())
-                                               .orElse(new ArrayList<>())
-                                               .stream().map(userRole -> userRole.getRole().getName())
-                                               .toList();
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("roles", roleNames);
+    @Override
+    public AuthenticationResponse refreshToken(RefreshRequest refreshRequest) {
+        log.info("Refresh token attempt");
 
-        return AuthenticationResponse.builder()
-                                     .accessToken(jwtUtil.generateToken(user.getId().toString(), claims))
-                                     .refreshToken(jwtUtil.generateRefreshToken(user.getId().toString(), claims))
-                                     .userBaseInfo(UserBaseInfo.builder()
-                                                               .id(String.valueOf(user.getId()))
-                                                               .displayName(user.getUserProfile().getDisplayName())
-                                                               .avatarUrl(user.getUserProfile().getAvatarUrl())
-                                                               .roles(roleNames)
-                                                               .build())
-                                     .build();
+        if (tokenBlacklistService.isTokenBlacklisted(refreshRequest.getRefreshToken())) {
+            log.warn("Refresh token is blacklisted");
+            throw new AppException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        long userId = Long.parseLong(jwtUtil.extractUserID(refreshRequest.getRefreshToken()));
+        User user = userRepository.findByIdAndIsActiveTrue(userId)
+                                  .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        log.info("Refresh token successful for user ID: {}", userId);
+        return createAuthenticationResponse(user);
     }
 
     @Override
@@ -130,5 +128,25 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         log.info("Tokens blacklisted successfully for logout");
         return true;
+    }
+
+    private AuthenticationResponse createAuthenticationResponse(User user) {
+        List<String> roleNames = userRepository.findUserRolesByUserId(user.getId())
+                                               .orElse(new ArrayList<>())
+                                               .stream().map(userRole -> userRole.getRole().getName())
+                                               .toList();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", roleNames);
+
+        return AuthenticationResponse.builder()
+                                     .accessToken(jwtUtil.generateToken(user.getId().toString(), claims))
+                                     .refreshToken(jwtUtil.generateRefreshToken(user.getId().toString(), claims))
+                                     .userBaseInfo(UserBaseInfo.builder()
+                                                               .id(String.valueOf(user.getId()))
+                                                               .displayName(user.getUserProfile().getDisplayName())
+                                                               .avatarUrl(user.getUserProfile().getAvatarUrl())
+                                                               .roles(roleNames)
+                                                               .build())
+                                     .build();
     }
 }

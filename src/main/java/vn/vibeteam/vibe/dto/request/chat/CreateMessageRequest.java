@@ -10,7 +10,7 @@ import java.util.List;
 @Getter
 @Setter
 public class CreateMessageRequest {
-    private final String key;
+    private final String clientUniqueId;
     private final String content;
     private final List<MessageAttachment> attachments;
 }

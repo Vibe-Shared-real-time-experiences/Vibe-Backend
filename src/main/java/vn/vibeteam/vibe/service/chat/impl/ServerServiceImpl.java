@@ -28,6 +28,7 @@ import vn.vibeteam.vibe.service.chat.ServerService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -79,7 +80,7 @@ public class ServerServiceImpl implements ServerService {
         log.info("Fetching server with ID: {}", serverId);
 
         Long userId = securityUtils.getCurrentUserId();
-        Server server = serverRepository.findById(serverId)
+        Server server = serverRepository.findServerDetailById(serverId)
                                         .orElseThrow(() -> new AppException(ErrorCode.SERVER_NOT_FOUND));
         ServerMember serverMember = serverMemberRepository.findByServerIdAndUserId(serverId, userId)
                                                           .orElse(null);
@@ -224,7 +225,7 @@ public class ServerServiceImpl implements ServerService {
 
         Category defaultVoiceCategory = Category.builder()
                                                 .name("Voice Channels")
-                                                .position(0)
+                                                .position(1)
                                                 .isPublic(true)
                                                 .isActive(true)
                                                 .build();
@@ -270,6 +271,13 @@ public class ServerServiceImpl implements ServerService {
     }
 
     private ServerDetailResponse mapToServerDetailResponse(Server server) {
+        // Sort categories by position
+        List<CategoryResponse> categoryResponses = server.getCategories()
+                                                         .stream()
+                                                         .sorted(Comparator.comparingInt(Category::getPosition))
+                                                         .map(this::mapToCategoryResponse)
+                                                         .toList();
+
         return ServerDetailResponse.builder()
                                    .id(server.getId())
                                    .ownerId(server.getOwner().getId())
@@ -278,14 +286,17 @@ public class ServerServiceImpl implements ServerService {
                                    .iconUrl(server.getIconUrl())
                                    .publicAccess(server.getIsPublic())
                                    .active(server.getIsActive())
-                                   .categories(server.getCategories()
-                                                     .stream()
-                                                     .map(this::mapToCategoryResponse)
-                                                     .collect(Collectors.toSet()))
+                                   .categories(categoryResponses)
                                    .build();
     }
 
     private CategoryResponse mapToCategoryResponse(Category category) {
+        List<ChannelResponse> channelResponses = category.getChannels()
+                                                         .stream()
+                                                         .sorted(Comparator.comparingInt(Channel::getPosition))
+                                                         .map(this::mapToChannelResponse)
+                                                         .toList();
+
         return CategoryResponse.builder()
                                .id(category.getId())
                                .serverId(category.getId())
@@ -293,10 +304,7 @@ public class ServerServiceImpl implements ServerService {
                                .position(category.getPosition())
                                .publicAccess(category.getIsPublic())
                                .active(category.getIsActive())
-                               .channels(category.getChannels()
-                                                 .stream()
-                                                 .map(this::mapToChannelResponse)
-                                                 .collect(Collectors.toSet()))
+                               .channels(channelResponses)
                                .build();
     }
 
