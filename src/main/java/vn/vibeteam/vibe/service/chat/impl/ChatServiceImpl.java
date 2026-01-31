@@ -19,6 +19,7 @@ import vn.vibeteam.vibe.dto.websocket.WsMessageResponse;
 import vn.vibeteam.vibe.dto.websocket.WsUserSummary;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
+import vn.vibeteam.vibe.model.authorization.UserProfile;
 import vn.vibeteam.vibe.model.server.Channel;
 import vn.vibeteam.vibe.model.server.ChannelMessage;
 import vn.vibeteam.vibe.model.server.MessageAttachment;
@@ -26,6 +27,7 @@ import vn.vibeteam.vibe.model.server.ServerMember;
 import vn.vibeteam.vibe.repository.chat.ChannelRepository;
 import vn.vibeteam.vibe.repository.chat.MessageRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
+import vn.vibeteam.vibe.repository.user.UserProfileRepository;
 import vn.vibeteam.vibe.service.chat.ChatService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 import vn.vibeteam.vibe.util.SnowflakeIdGenerator;
@@ -42,6 +44,7 @@ public class ChatServiceImpl implements ChatService {
     private final ServerRepository serverRepository;
     private final ChannelRepository channelRepository;
     private final MessageRepository messageRepository;
+    private final UserProfileRepository userProfileRepository;
 
     private final SnowflakeIdGenerator idGenerator;
     private final SimpMessagingTemplate messagingTemplate;
@@ -134,7 +137,12 @@ public class ChatServiceImpl implements ChatService {
         }
 
         // 2. Create response
-        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages);
+        List<UserProfile> userProfiles = userProfileRepository.findAllById(
+                messages.stream()
+                        .map(msg -> msg.getAuthor().getUser().getId())
+                        .collect(Collectors.toSet())
+        );
+        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages, userProfiles);
 
         boolean hasNext = messages.size() > limit;
         if (hasNext) {
@@ -212,7 +220,7 @@ public class ChatServiceImpl implements ChatService {
         return adminId.equals(currentUserId);
     }
 
-    private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages) {
+    private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages, List<UserProfile> userProfiles) {
         List<MessageResponse> messageResponses = messages.stream().map(
                 msg -> MessageResponse.builder()
                                       .id(msg.getId())
@@ -236,12 +244,12 @@ public class ChatServiceImpl implements ChatService {
                                       .build()
         ).toList();
 
-        Set<MemberSummaryInfoResponse> memberInfos = messages.stream().map(
-                msg -> MemberSummaryInfoResponse.builder()
-                                                .memberId(msg.getAuthor().getId())
-                                                .displayName(msg.getAuthor().getNickname())
-                                                .avatarUrl(msg.getAuthor().getAvatarUrl())
-                                                .build()
+        Set<MemberSummaryInfoResponse> memberInfos = userProfiles.stream().map(
+                profile -> MemberSummaryInfoResponse.builder()
+                                                     .memberId(profile.getUser().getId())
+                                                     .displayName(profile.getDisplayName())
+                                                     .avatarUrl(profile.getAvatarUrl())
+                                                     .build()
         ).collect(Collectors.toSet());
 
         return ChannelHistoryResponse.builder()
@@ -259,7 +267,7 @@ public class ChatServiceImpl implements ChatService {
                                  .author(WsUserSummary.builder()
                                                       .id(channelMessage.getAuthor().getId())
                                                       .username(channelMessage.getAuthor().getNickname())
-                                                      .avatarUrl(channelMessage.getAuthor().getAvatarUrl())
+                                                      .avatarUrl(channelMessage.getAuthor().getUser().getUserProfile().getAvatarUrl())
                                                       .build())
                                  .createdAt(channelMessage.getCreatedAt().toString());
         if (channelMessage.getAttachmentMetadata() != null && !channelMessage.getAttachmentMetadata()
