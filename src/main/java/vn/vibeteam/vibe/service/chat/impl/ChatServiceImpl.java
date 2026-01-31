@@ -3,8 +3,6 @@ package vn.vibeteam.vibe.service.chat.impl;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,14 +19,15 @@ import vn.vibeteam.vibe.dto.websocket.WsMessageResponse;
 import vn.vibeteam.vibe.dto.websocket.WsUserSummary;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
+import vn.vibeteam.vibe.model.authorization.UserProfile;
 import vn.vibeteam.vibe.model.server.Channel;
 import vn.vibeteam.vibe.model.server.ChannelMessage;
 import vn.vibeteam.vibe.model.server.MessageAttachment;
 import vn.vibeteam.vibe.model.server.ServerMember;
 import vn.vibeteam.vibe.repository.chat.ChannelRepository;
 import vn.vibeteam.vibe.repository.chat.MessageRepository;
-import vn.vibeteam.vibe.repository.chat.ServerMemberRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
+import vn.vibeteam.vibe.repository.user.UserProfileRepository;
 import vn.vibeteam.vibe.service.chat.ChatService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 import vn.vibeteam.vibe.util.SnowflakeIdGenerator;
@@ -45,17 +44,17 @@ public class ChatServiceImpl implements ChatService {
     private final ServerRepository serverRepository;
     private final ChannelRepository channelRepository;
     private final MessageRepository messageRepository;
-    private final ServerMemberRepository serverMemberRepository;
+    private final UserProfileRepository userProfileRepository;
 
     private final SnowflakeIdGenerator idGenerator;
     private final SimpMessagingTemplate messagingTemplate;
     private static final String WEBSOCKET_SERVER_DESTINATION_PREFIX = "/topic/servers/";
     private static final String WEBSOCKET_CHANNEL_DESTINATION_PREFIX = "/topic/channels/";
+    private static final String ATTACHMENT_BASE_URL = "https://vibe-attachments.s3.amazonaws.com/";
 
     private final SecurityUtils securityUtils;
 
     @Override
-    @Transactional
     public CreateMessageResponse sendMessage(String channelId, CreateMessageRequest request) {
         log.info("Sending message to channelId: {}", channelId);
 
@@ -65,7 +64,7 @@ public class ChatServiceImpl implements ChatService {
 
         Long currentUserId = securityUtils.getCurrentUserId();
 
-        ServerMember member = serverRepository.findMemberByServerIdAndUserId(
+        ServerMember member = serverRepository.findMemberById(
                 channel.getServer().getId(),
                 currentUserId
         ).orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_IN_SERVER));
@@ -77,36 +76,28 @@ public class ChatServiceImpl implements ChatService {
                               .id(messageId)
                               .channel(channel)
                               .author(member)
-                              .clientUniqueId(request.getClientUniqueId())
                               .content(request.getContent());
 
         if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+            String url = ATTACHMENT_BASE_URL + messageId + "/";
+
             List<MessageAttachment> attachments = request.getAttachments().stream().map(
                     att -> MessageAttachment.builder()
-                                            .url(att.getUrl())
+                                            .url(url)
                                             .type(att.getType())
                                             .contentType(att.getContentType())
-                                            .width(att.getWidth() != null ? att.getWidth() : 0)
-                                            .height(att.getHeight() != null ? att.getHeight() : 0)
-                                            .size(att.getSize() != null ? att.getSize() : 0L)
+                                            .width(att.getWidth())
+                                            .height(att.getHeight())
+                                            .size(att.getSize())
                                             .build()
             ).toList();
 
             channelMessageBuilder.attachmentMetadata(attachments);
         }
 
-        ChannelMessage channelMessages = channelMessageBuilder.build();
-
         // 3. Persist message
-        try {
-            channelMessages = messageRepository.save(channelMessages);
-        } catch (DataIntegrityViolationException e) {
-            log.info("Duplicate message key detected: {}", request.getClientUniqueId());
-            ChannelMessage channelMessage = messageRepository.findByClientUniqueId(request.getClientUniqueId())
-                                                             .orElse(null);
-
-            return mapToCreateMessageResponse(channelMessage, request.getClientUniqueId());
-        }
+        ChannelMessage channelMessages = channelMessageBuilder.build();
+        channelMessages = messageRepository.save(channelMessages);
 
         // 4. Broadcast message (server + channel)
         WsEvent<WsMessageResponse> wsChannelEvent = createWsChannelEvent(channelMessages);
@@ -123,20 +114,14 @@ public class ChatServiceImpl implements ChatService {
 
         // 5. Return response
         log.info("Message sent successfully with id: {}", channelMessages.getId());
-        return mapToCreateMessageResponse(channelMessages, request.getClientUniqueId());
+        return mapToCreateMessageResponse(channelMessages, request.getKey());
     }
 
     @Override
-    public CursorResponse<ChannelHistoryResponse> getChannelMessages(String channelId, String cursor,
-                                                                     int limit) {
+    public CursorResponse<ChannelHistoryResponse> getChannelMessages(String channelId, String cursor, int limit) {
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
 
-        // 1. Validate channel
-        Long serverId = channelRepository.findServerIdById(Long.valueOf(channelId))
-                                         .orElseThrow(() -> new AppException(ErrorCode.CHANNEL_NOT_IN_SERVER))
-                                         .getServer().getId();
-
-        // 2. Fetch messages
+        // 1. Fetch messages
         Pageable pageable = PageRequest.of(
                 0,      // Using cursor pagination, so page number is always 0
                 limit + 1,          // Fetch one extra to determine if there's a next page
@@ -151,26 +136,23 @@ public class ChatServiceImpl implements ChatService {
             messages = messageRepository.findLatestMessages(Long.parseLong(channelId), pageable);
         }
 
-        // 3. Fetch member infos
-        Set<Long> senderIds = messages.stream()
-                                      .map(msg -> msg.getAuthor().getId())
-                                      .collect(Collectors.toSet());
-        Set<ServerMember> memberInfos =
-                serverMemberRepository.findDetailsByServerIdAndIn(serverId, senderIds);
+        // 2. Create response
+        List<UserProfile> userProfiles = userProfileRepository.findAllById(
+                messages.stream()
+                        .map(msg -> msg.getAuthor().getUser().getId())
+                        .collect(Collectors.toSet())
+        );
+        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages, userProfiles);
 
-        // 4. Create response (messages + member summarize info)
-        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages, memberInfos);
-
-
-        // 5. Determine next cursor
         boolean hasNext = messages.size() > limit;
         if (hasNext) {
             messages = messages.subList(0, limit);
         }
 
+        // 3. Determine next cursor
         String nextCursor = null;
         if (hasNext) {
-            Long lastMessageId = messages.getLast().getId();
+            Long lastMessageId = messages.get(messages.size() - 1).getId();
             nextCursor = lastMessageId.toString();
         }
 
@@ -189,8 +171,7 @@ public class ChatServiceImpl implements ChatService {
 
         // 1. Find message
         ChannelMessage channelMessage = messageRepository.findById(Long.valueOf(messageId))
-                                                         .orElseThrow(
-                                                                 () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
+                                                         .orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
 
         // 2. Verify author
         boolean isOwner = isAuthor(channelMessage.getAuthor().getId());
@@ -213,8 +194,7 @@ public class ChatServiceImpl implements ChatService {
 
         // 1. Find message
         ChannelMessage channelMessage = messageRepository.findById(Long.valueOf(messageId))
-                                                         .orElseThrow(
-                                                                 () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
+                                                         .orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
 
         // 2. Verify author
         boolean isOwner = isAuthor(channelMessage.getAuthor().getId());
@@ -240,8 +220,7 @@ public class ChatServiceImpl implements ChatService {
         return adminId.equals(currentUserId);
     }
 
-    private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages,
-                                                               Set<ServerMember> memberInfos) {
+    private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages, List<UserProfile> userProfiles) {
         List<MessageResponse> messageResponses = messages.stream().map(
                 msg -> MessageResponse.builder()
                                       .id(msg.getId())
@@ -251,42 +230,32 @@ public class ChatServiceImpl implements ChatService {
                                       .attachments(
                                               msg.getAttachmentMetadata() != null ?
                                                       msg.getAttachmentMetadata().stream().map(
-                                                              ChatServiceImpl::mapToAttachmentResponse
+                                                              att -> MessageAttachmentResponse.builder()
+                                                                                              .url(att.getUrl())
+                                                                                              .type(att.getType())
+                                                                                              .contentType(
+                                                                                                      att.getContentType())
+                                                                                              .width(att.getWidth())
+                                                                                              .height(att.getHeight())
+                                                                                              .size(att.getSize())
+                                                                                              .build()
                                                       ).toList() : null
                                       )
-                                      .createdAt(msg.getCreatedAt())
-                                      .updatedAt(msg.getUpdatedAt())
                                       .build()
         ).toList();
 
-        Set<MemberSummaryInfoResponse> memberSummaryInfos = memberInfos.stream().map(
-                member -> {
-                    String finalName =
-                            member.getNickname() != null ? member.getNickname() : member.getUser().getUsername();
-                    return MemberSummaryInfoResponse.builder()
-                                                    .memberId(member.getId())
-                                                    .displayName(finalName)
-                                                    .avatarUrl(member.getUser().getUserProfile().getAvatarUrl())
-                                                    .build();
-                }
+        Set<MemberSummaryInfoResponse> memberInfos = userProfiles.stream().map(
+                profile -> MemberSummaryInfoResponse.builder()
+                                                     .memberId(profile.getUser().getId())
+                                                     .displayName(profile.getDisplayName())
+                                                     .avatarUrl(profile.getAvatarUrl())
+                                                     .build()
         ).collect(Collectors.toSet());
 
         return ChannelHistoryResponse.builder()
                                      .messages(messageResponses)
-                                     .memberInfos(memberSummaryInfos)
+                                     .memberInfos(memberInfos)
                                      .build();
-    }
-
-    private static MessageAttachmentResponse mapToAttachmentResponse(MessageAttachment att) {
-        return MessageAttachmentResponse.builder()
-                                        .url(att.getUrl())
-                                        .type(att.getType())
-                                        .contentType(
-                                                att.getContentType())
-                                        .width(att.getWidth())
-                                        .height(att.getHeight())
-                                        .size(att.getSize())
-                                        .build();
     }
 
     private WsEvent<WsMessageResponse> createWsChannelEvent(ChannelMessage channelMessage) {
@@ -298,10 +267,7 @@ public class ChatServiceImpl implements ChatService {
                                  .author(WsUserSummary.builder()
                                                       .id(channelMessage.getAuthor().getId())
                                                       .username(channelMessage.getAuthor().getNickname())
-                                                      .avatarUrl(channelMessage.getAuthor()
-                                                                               .getUser()
-                                                                               .getUserProfile()
-                                                                               .getAvatarUrl())
+                                                      .avatarUrl(channelMessage.getAuthor().getUser().getUserProfile().getAvatarUrl())
                                                       .build())
                                  .createdAt(channelMessage.getCreatedAt().toString());
         if (channelMessage.getAttachmentMetadata() != null && !channelMessage.getAttachmentMetadata()
@@ -332,7 +298,7 @@ public class ChatServiceImpl implements ChatService {
     private CreateMessageResponse mapToCreateMessageResponse(ChannelMessage channelMessage, String key) {
         return CreateMessageResponse.builder()
                                     .messageId(channelMessage.getId().toString())
-                                    .clientUniqueId(key)
+                                    .key(key)
                                     .status(MessageStatus.SUCCESS)
                                     .build();
     }
