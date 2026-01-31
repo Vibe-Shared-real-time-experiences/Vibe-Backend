@@ -65,11 +65,6 @@ public class ChatServiceImpl implements ChatService {
 
         Long currentUserId = securityUtils.getCurrentUserId();
 
-        log.info("{}, {}",
-                channel.getServer().getId(),
-                currentUserId
-        );
-
         ServerMember member = serverRepository.findMemberByServerIdAndUserId(
                 channel.getServer().getId(),
                 currentUserId
