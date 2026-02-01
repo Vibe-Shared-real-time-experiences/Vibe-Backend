@@ -9,7 +9,7 @@ import vn.vibeteam.vibe.service.chat.CategoryService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor
 @Slf4j
 public class CategoryController {
@@ -17,29 +17,14 @@ public class CategoryController {
     private final CategoryService categoryService;
     private final SecurityUtils securityUtils;
 
-    @PostMapping("/servers/{serverId}/categories")
-    public ApiResponse<Void> createCategory(
-            @PathVariable Long serverId,
-            @RequestBody CreateCategoryRequest createCategoryRequest) {
-
-        log.info("Create category for server id: {}, category name: {}", serverId, createCategoryRequest.getName());
-
-        Long userId = securityUtils.getCurrentUserId();
-        categoryService.createCategory(userId, serverId, createCategoryRequest);
-        return ApiResponse.<Void>builder()
-                          .code(200)
-                          .message("Category created successfully")
-                          .build();
-    }
-
-    @DeleteMapping("/categories/{categoryId}")
+    @DeleteMapping("/{categoryId}")
     public ApiResponse<Void> deleteCategory(
-            @PathVariable Long categoryId) {
+            @PathVariable String categoryId) {
 
         log.info("Delete category with id: {}", categoryId);
 
-        Long userId = securityUtils.getCurrentUserId();
-        categoryService.deleteCategory(userId, categoryId);
+        long userId = securityUtils.getCurrentUserId();
+        categoryService.deleteCategory(userId, Long.parseLong(categoryId));
 
         return ApiResponse.<Void>builder()
                           .code(200)

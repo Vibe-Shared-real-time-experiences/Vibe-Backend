@@ -9,9 +9,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
+import vn.vibeteam.vibe.dto.request.chat.CreateCategoryRequest;
+import vn.vibeteam.vibe.dto.request.chat.CreateChannelRequest;
 import vn.vibeteam.vibe.dto.request.chat.CreateServerRequest;
+import vn.vibeteam.vibe.dto.response.chat.ChannelResponse;
 import vn.vibeteam.vibe.dto.response.chat.ServerDetailResponse;
 import vn.vibeteam.vibe.dto.response.chat.ServerResponse;
+import vn.vibeteam.vibe.service.chat.CategoryService;
+import vn.vibeteam.vibe.service.chat.ChannelService;
 import vn.vibeteam.vibe.service.chat.ServerService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
@@ -25,6 +30,8 @@ import java.util.List;
 public class ServerController {
 
     private final ServerService serverService;
+    private final CategoryService categoryService;
+    private final ChannelService channelService;
     private final SecurityUtils securityUtils;
 
     @PostMapping("")
@@ -58,7 +65,7 @@ public class ServerController {
     public ApiResponse<ServerDetailResponse> createServer(@RequestBody CreateServerRequest createServerRequest) {
         log.info("Create server endpoint called, server name: {}", createServerRequest.getName());
 
-        Long userId = securityUtils.getCurrentUserId();
+        long userId = securityUtils.getCurrentUserId();
         ServerDetailResponse response = serverService.createServer(userId, createServerRequest);
 
         return ApiResponse.<ServerDetailResponse>builder()
@@ -68,11 +75,70 @@ public class ServerController {
                           .build();
     }
 
-    @PostMapping("/{serverId}/join")
-    public ApiResponse<Void> joinServer(@PathVariable Long serverId) {
-        log.info("Join server endpoint called for server: {}", serverId);
+    @PostMapping("/{serverId}/categories")
+    public ApiResponse<Void> createCategory(
+            @PathVariable Long serverId,
+            @RequestBody CreateCategoryRequest createCategoryRequest) {
+
+        log.info("Create category for server id: {}, category name: {}", serverId, createCategoryRequest.getName());
 
         Long userId = securityUtils.getCurrentUserId();
+        categoryService.createCategory(userId, serverId, createCategoryRequest);
+        return ApiResponse.<Void>builder()
+                          .code(200)
+                          .message("Category created successfully")
+                          .build();
+    }
+
+    @PostMapping("/{serverId}/channels")
+    public ApiResponse<ChannelResponse> createChannel(
+            @PathVariable long serverId,
+            @RequestBody CreateChannelRequest CreateChannelRequest) {
+
+        log.info("Create channel endpoint called");
+        long userId = securityUtils.getCurrentUserId();
+        ChannelResponse channelResponse = channelService.createChannel(userId, serverId, CreateChannelRequest);
+
+        return ApiResponse.<ChannelResponse>builder()
+                          .code(200)
+                          .message("Channel created successfully")
+                          .data(channelResponse)
+                          .build();
+    }
+
+    @GetMapping("/{serverId}/channels")
+    public ApiResponse<List<ChannelResponse>> listChannelsByServerId(@PathVariable Long serverId) {
+
+        log.info("List channels by server id endpoint called for serverId: {}", serverId);
+        List<ChannelResponse> channels = channelService.listChannelsByServerId(serverId);
+
+        return ApiResponse.<List<ChannelResponse>>builder()
+                          .code(200)
+                          .message("Channels retrieved successfully")
+                          .data(channels)
+                          .build();
+    }
+
+    @GetMapping("/{serverId}/channels/{channelId}")
+    public ApiResponse<ChannelResponse> getChannelsByServerId(
+            @PathVariable long serverId,
+            @PathVariable long channelId) {
+
+        log.info("Get channel by id endpoint called for serverId: {}, channelId: {}", serverId, channelId);
+        ChannelResponse channelResponse = channelService.getChannelById(serverId, channelId);
+
+        return ApiResponse.<ChannelResponse>builder()
+                          .code(200)
+                          .message("Channel retrieved successfully")
+                          .data(channelResponse)
+                          .build();
+    }
+
+    @PostMapping("/{serverId}/join")
+    public ApiResponse<Void> joinServer(@PathVariable long serverId) {
+        log.info("Join server endpoint called for server: {}", serverId);
+
+        long userId = securityUtils.getCurrentUserId();
         serverService.joinServer(userId, serverId);
 
         return ApiResponse.<Void>builder()
@@ -82,10 +148,10 @@ public class ServerController {
     }
 
     @PostMapping("/{serverId}/leave")
-    public ApiResponse<Void> leaveServer(@PathVariable Long serverId) {
+    public ApiResponse<Void> leaveServer(@PathVariable long serverId) {
         log.info("Leave server endpoint called for server: {}", serverId);
 
-        Long userId = securityUtils.getCurrentUserId();
+        long userId = securityUtils.getCurrentUserId();
         serverService.leaveServer(userId, serverId);
 
         return ApiResponse.<Void>builder()
@@ -98,7 +164,7 @@ public class ServerController {
     public ApiResponse<List<ServerResponse>> listServers() {
         log.info("List servers endpoint called");
 
-        Long userId = securityUtils.getCurrentUserId();
+        long userId = securityUtils.getCurrentUserId();
         List<ServerResponse> response = serverService.getUserServers(userId);
 
         return ApiResponse.<List<ServerResponse>>builder()
@@ -109,10 +175,10 @@ public class ServerController {
     }
 
     @GetMapping("/{serverId}")
-    public ApiResponse<ServerDetailResponse> getServer(@PathVariable Long serverId) {
+    public ApiResponse<ServerDetailResponse> getServer(@PathVariable long serverId) {
         log.info("Get server endpoint called for server: {}", serverId);
 
-        Long userId = securityUtils.getCurrentUserId();
+        long userId = securityUtils.getCurrentUserId();
         ServerDetailResponse response = serverService.getServerById(userId, serverId);
 
         return ApiResponse.<ServerDetailResponse>builder()
@@ -123,10 +189,10 @@ public class ServerController {
     }
 
     @DeleteMapping("/{serverId}")
-    public ApiResponse<Void> deleteServer(@PathVariable Long serverId) {
+    public ApiResponse<Void> deleteServer(@PathVariable long serverId) {
         log.info("Delete server endpoint called for server: {}", serverId);
 
-        Long userId = securityUtils.getCurrentUserId();
+        long userId = securityUtils.getCurrentUserId();
         serverService.deleteServer(userId, serverId);
 
         return ApiResponse.<Void>builder()

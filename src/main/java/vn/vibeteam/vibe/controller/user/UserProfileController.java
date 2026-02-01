@@ -12,7 +12,7 @@ import vn.vibeteam.vibe.service.user.UserProfileService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1/profile")
 @RequiredArgsConstructor
 @Slf4j
 public class UserProfileController {
@@ -20,7 +20,7 @@ public class UserProfileController {
     private final UserProfileService userProfileService;
     private final SecurityUtils securityUtils;
 
-    @GetMapping("/profile")
+    @GetMapping("")
     public ApiResponse<UserProfileResponse> getUserProfile() {
         Long userId = securityUtils.getCurrentUserId();
         log.info("Get user profile request for userId: {}", userId);
@@ -34,7 +34,7 @@ public class UserProfileController {
                 .build();
     }
 
-    @PostMapping("/profile")
+    @PostMapping("")
     public ApiResponse<UserProfileResponse> createUserProfile(
             @RequestBody CreateUserProfileRequest request) {
 
@@ -50,7 +50,7 @@ public class UserProfileController {
                 .build();
     }
 
-    @PutMapping("/profile")
+    @PutMapping("")
     public ApiResponse<UserProfileResponse> updateUserProfile(
             @RequestBody UpdateUserProfileRequest request) {
 
