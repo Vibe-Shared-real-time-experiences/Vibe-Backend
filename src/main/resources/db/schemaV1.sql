@@ -193,6 +193,16 @@ CREATE TABLE channel_messages
     is_deleted  BOOLEAN                  DEFAULT FALSE
 );
 
+CREATE TABLE channel_read_states
+(
+    id                   BIGSERIAL PRIMARY KEY,
+    user_id              BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    channel_id           BIGSERIAL NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
+    last_read_message_id BIGINT NOT NULL DEFAULT 0,
+    last_updated         TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (user_id, channel_id)
+);
+
 CREATE TABLE conversations
 (
     id         BIGSERIAL PRIMARY KEY,
@@ -258,7 +268,6 @@ CREATE TABLE conversation_messages
 --     is_read    BOOLEAN                  DEFAULT FALSE,
 --     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 -- );
-
 
 -- ==========================================
 -- DATA INITIALIZATION

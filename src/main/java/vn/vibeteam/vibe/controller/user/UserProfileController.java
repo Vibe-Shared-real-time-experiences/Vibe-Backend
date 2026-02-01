@@ -9,6 +9,7 @@ import vn.vibeteam.vibe.dto.request.user.CreateUserProfileRequest;
 import vn.vibeteam.vibe.dto.request.user.UpdateUserProfileRequest;
 import vn.vibeteam.vibe.dto.response.user.UserProfileResponse;
 import vn.vibeteam.vibe.service.user.UserProfileService;
+import vn.vibeteam.vibe.util.SecurityUtils;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -17,9 +18,11 @@ import vn.vibeteam.vibe.service.user.UserProfileService;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
+    private final SecurityUtils securityUtils;
 
-    @GetMapping("/{userId}/profile")
-    public ApiResponse<UserProfileResponse> getUserProfile(@PathVariable Long userId) {
+    @GetMapping("/profile")
+    public ApiResponse<UserProfileResponse> getUserProfile() {
+        Long userId = securityUtils.getCurrentUserId();
         log.info("Get user profile request for userId: {}", userId);
 
         UserProfileResponse response = userProfileService.getUserProfile(userId);
@@ -31,10 +34,11 @@ public class UserProfileController {
                 .build();
     }
 
-    @PostMapping("/{userId}/profile")
+    @PostMapping("/profile")
     public ApiResponse<UserProfileResponse> createUserProfile(
-            @PathVariable Long userId,
             @RequestBody CreateUserProfileRequest request) {
+
+        Long userId = securityUtils.getCurrentUserId();
         log.info("Create user profile request for userId: {}", userId);
 
         UserProfileResponse response = userProfileService.createUserProfile(userId, request);
@@ -46,10 +50,11 @@ public class UserProfileController {
                 .build();
     }
 
-    @PutMapping("/{userId}/profile")
+    @PutMapping("/profile")
     public ApiResponse<UserProfileResponse> updateUserProfile(
-            @PathVariable Long userId,
             @RequestBody UpdateUserProfileRequest request) {
+
+        Long userId = securityUtils.getCurrentUserId();
         log.info("Update user profile request for userId: {}", userId);
 
         UserProfileResponse response = userProfileService.updateUserProfile(userId, request);
