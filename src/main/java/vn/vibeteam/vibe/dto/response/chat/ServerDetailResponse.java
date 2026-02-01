@@ -10,12 +10,12 @@ import java.util.List;
 @Getter
 @Builder
 public class ServerDetailResponse implements Serializable {
-    private long id;
-    private long ownerId;
+    private Long id;
+    private Long ownerId;
     private String name;
     private String description;
     private String iconUrl;
-    private boolean publicAccess;
-    private boolean active;
+    private Boolean publicAccess;
+    private Boolean active;
     private List<CategoryResponse> categories;
 }

@@ -9,7 +9,7 @@ import lombok.*;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class MemberSummaryInfoResponse {
     @EqualsAndHashCode.Include
-    private long memberId;
+    private Long memberId;
     private String displayName;
     private String avatarUrl;
 }

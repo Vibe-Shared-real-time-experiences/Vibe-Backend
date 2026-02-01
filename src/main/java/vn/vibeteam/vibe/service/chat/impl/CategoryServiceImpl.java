@@ -13,6 +13,8 @@ import vn.vibeteam.vibe.repository.chat.CategoryRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
 import vn.vibeteam.vibe.service.chat.CategoryService;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,7 +25,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public void createCategory(long userId, long serverId, CreateCategoryRequest createCategoryRequest) {
+    public void createCategory(Long userId, Long serverId, CreateCategoryRequest createCategoryRequest) {
         log.info("Creating category in server: {}", serverId);
 
         // 1. Verify server exists and is not deleted
@@ -52,7 +54,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public void deleteCategory(long userId, long categoryId) {
+    public void deleteCategory(Long userId, Long categoryId) {
         log.info("Deleting category: {}", categoryId);
 
         // 1. Verify category exists and is not deleted
@@ -76,7 +78,7 @@ public class CategoryServiceImpl implements CategoryService {
         log.info("Category {} deleted successfully", categoryId);
     }
 
-    private boolean isOwner(long userId, Long ownerId) {
-        return userId == ownerId;
+    private boolean isOwner(Long userId, Long ownerId) {
+        return Objects.equals(userId, ownerId);
     }
 }

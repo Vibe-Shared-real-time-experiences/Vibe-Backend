@@ -32,6 +32,7 @@ import vn.vibeteam.vibe.service.chat.ChatService;
 import vn.vibeteam.vibe.util.SnowflakeIdGenerator;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -52,11 +53,11 @@ public class ChatServiceImpl implements ChatService {
     private static final String ATTACHMENT_BASE_URL = "https://vibe-attachments.s3.amazonaws.com/";
 
     @Override
-    public CreateMessageResponse sendMessage(long userId, String channelId, CreateMessageRequest request) {
+    public CreateMessageResponse sendMessage(Long userId, Long channelId, CreateMessageRequest request) {
         log.info("Sending message to channelId: {}", channelId);
 
         // 1. Find channel
-        Channel channel = channelRepository.findById(Long.valueOf(channelId))
+        Channel channel = channelRepository.findById(channelId)
                                            .orElseThrow(() -> new AppException(ErrorCode.CHANNEL_NOT_FOUND));
 
         ServerMember member = serverRepository.findMemberByServerIdAndUserId(
@@ -114,7 +115,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public CursorResponse<ChannelHistoryResponse> getChannelMessages(String channelId, String cursor, int limit) {
+    public CursorResponse<ChannelHistoryResponse> getChannelMessages(Long channelId, Long cursor, int limit) {
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
 
         // 1. Fetch messages
@@ -126,10 +127,9 @@ public class ChatServiceImpl implements ChatService {
 
         List<ChannelMessage> messages;
         if (cursor != null) {
-            Long cursorId = Long.valueOf(cursor);
-            messages = messageRepository.findOlderMessagesById(Long.parseLong(channelId), cursorId, pageable);
+            messages = messageRepository.findOlderMessagesById(channelId, cursor, pageable);
         } else {
-            messages = messageRepository.findLatestMessages(Long.parseLong(channelId), pageable);
+            messages = messageRepository.findLatestMessages(channelId, pageable);
         }
 
         // 2. Create response
@@ -146,10 +146,9 @@ public class ChatServiceImpl implements ChatService {
         }
 
         // 3. Determine next cursor
-        String nextCursor = null;
+        Long nextCursor = null;
         if (hasNext) {
-            Long lastMessageId = messages.get(messages.size() - 1).getId();
-            nextCursor = lastMessageId.toString();
+            nextCursor = messages.getLast().getId();
         }
 
         log.info("Fetched {} messages for channelId: {}", channelHistoryResponse.getMessages().size(), channelId);
@@ -162,11 +161,11 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public void editMessageContent(long userId, String messageId, String newContent) {
+    public void editMessageContent(Long userId, Long messageId, String newContent) {
         log.info("Editing content of messageId: {}", messageId);
 
         // 1. Find message
-        ChannelMessage channelMessage = messageRepository.findById(Long.valueOf(messageId))
+        ChannelMessage channelMessage = messageRepository.findById(messageId)
                                                          .orElseThrow(
                                                                  () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
 
@@ -186,17 +185,17 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public void deleteMessage(long userId, String messageId) {
+    public void deleteMessage(Long userId, Long messageId) {
         log.info("Deleting messageId: {}", messageId);
 
         // 1. Find message
-        ChannelMessage channelMessage = messageRepository.findById(Long.valueOf(messageId))
+        ChannelMessage channelMessage = messageRepository.findById(messageId)
                                                          .orElseThrow(
                                                                  () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
 
         // 2. Verify author
         boolean isOwner = isAuthor(userId, channelMessage.getAuthor().getId());
-        boolean isServerAdmin = isServerAdmin(userId, channelMessage.getChannel().getServer().getId());
+        boolean isServerAdmin = Objects.equals(userId, channelMessage.getChannel().getServer().getId());
         if (!isOwner && !isServerAdmin) {
             log.error("User {} is trying to delete message {} without ownership",
                       userId, messageId);
@@ -204,16 +203,12 @@ public class ChatServiceImpl implements ChatService {
         }
 
         // 3. Delete message
-        messageRepository.deleteMessage(Long.valueOf(messageId));
+        messageRepository.deleteMessage(messageId);
         log.info("Message {} deleted successfully", messageId);
     }
 
-    private boolean isAuthor(long userId, Long authorId) {
+    private boolean isAuthor(Long userId, Long authorId) {
         return authorId.equals(userId);
-    }
-
-    private boolean isServerAdmin(long userId, Long serverId) {
-        return false;
     }
 
     private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages,
@@ -291,7 +286,7 @@ public class ChatServiceImpl implements ChatService {
                       .build();
     }
 
-    private Long generateSnowflakeId() {
+    private long generateSnowflakeId() {
         return idGenerator.nextId();
     }
 

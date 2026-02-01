@@ -10,11 +10,11 @@ import java.util.List;
 @Getter
 @Builder
 public class CategoryResponse implements Serializable {
-    private long id;
-    private long serverId;
+    private Long id;
+    private Long serverId;
     private String name;
-    private int position;
-    private boolean publicAccess;
-    private boolean active;
+    private Integer position;
+    private Boolean publicAccess;
+    private Boolean active;
     private List<ChannelResponse> channels;
 }

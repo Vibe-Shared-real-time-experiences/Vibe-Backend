@@ -5,7 +5,6 @@ import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
-import java.time.LocalDate;
 import java.util.Set;
 
 @Entity

@@ -20,7 +20,7 @@ import vn.vibeteam.vibe.service.media.MediaService;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -76,7 +76,7 @@ public class MediaServiceImpl implements MediaService {
                 case MediaType.ATTACHMENT:
                 default:
                     // Partition by date for attachments
-                    String datePath = LocalDate.now().toString(); // 2026-01-28
+                    String datePath = LocalDateTime.now().toString(); // 2026-01-28
                     String uuid = UUID.randomUUID().toString();
                     objectKey = String.format("attachments/%s/%s%s", datePath, uuid, extension);
                     break;

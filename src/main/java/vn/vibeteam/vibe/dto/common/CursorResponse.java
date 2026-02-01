@@ -10,7 +10,7 @@ import java.util.List;
 @Getter
 @Setter
 public class CursorResponse<T> {
-    private String nextCursor;
-    private boolean hasMore;
+    private Long nextCursor;
+    private Boolean hasMore;
     private T items;
 }

@@ -10,10 +10,10 @@ import java.io.Serializable;
 @Getter
 @Builder
 public class ChannelResponse implements Serializable {
-    private long id;
-    private long serverId;
+    private Long id;
+    private Long serverId;
     private Long categoryId;
     private String name;
     private ChannelType type;
-    private int position;
+    private Integer position;
 }

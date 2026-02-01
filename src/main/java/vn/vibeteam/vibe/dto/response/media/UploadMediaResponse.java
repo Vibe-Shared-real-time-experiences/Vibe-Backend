@@ -1,13 +1,13 @@
 package vn.vibeteam.vibe.dto.response.media;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import vn.vibeteam.vibe.common.MessageAttachmentType;
 
-@RequiredArgsConstructor
+@NoArgsConstructor
+@AllArgsConstructor
 @Getter
 @Setter
+@Builder
 public class UploadMediaResponse {
     private String url;
     private MessageAttachmentType type;

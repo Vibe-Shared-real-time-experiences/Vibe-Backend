@@ -9,11 +9,11 @@ import java.io.Serializable;
 @Getter
 @Builder
 public class ServerResponse implements Serializable {
-    private long id;
-    private long ownerId;
+    private Long id;
+    private Long ownerId;
     private String name;
     private String description;
     private String iconUrl;
-    private boolean publicAccess;
-    private boolean active;
+    private Boolean publicAccess;
+    private Boolean active;
 }

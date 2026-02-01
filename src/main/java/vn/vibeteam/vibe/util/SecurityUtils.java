@@ -10,13 +10,13 @@ import vn.vibeteam.vibe.model.authorization.User;
 @Component
 public class SecurityUtils {
 
-    public long getCurrentUserId() {
+    public Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        return Long.parseLong(authentication.getName()); 
+        return Long.parseLong(authentication.getName());
     }
 }

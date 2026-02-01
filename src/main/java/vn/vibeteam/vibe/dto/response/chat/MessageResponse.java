@@ -13,9 +13,9 @@ import java.util.List;
 @Getter
 @Builder
 public class MessageResponse {
-    private long id;
-    private long channelId;
-    private long senderId;
+    private Long id;
+    private Long channelId;
+    private Long senderId;
     private String content;
     private List<MessageAttachmentResponse> attachments;
     private MessageMetadataResponse metadata;

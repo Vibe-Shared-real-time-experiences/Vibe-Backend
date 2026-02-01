@@ -19,7 +19,7 @@ public class MessageController {
 
     @PatchMapping("/{messageId}")
     public ApiResponse<Void> editMessageContent(
-            @PathVariable String messageId,
+            @PathVariable Long messageId,
             @RequestBody String newContent) {
 
         long userId = securityUtils.getCurrentUserId();
@@ -33,7 +33,7 @@ public class MessageController {
     }
 
     @DeleteMapping("/{messageId}")
-    public ApiResponse<Void> deleteMessage(@PathVariable String messageId) {
+    public ApiResponse<Void> deleteMessage(@PathVariable Long messageId) {
 
         long userId = securityUtils.getCurrentUserId();
         chatService.deleteMessage(userId, messageId);

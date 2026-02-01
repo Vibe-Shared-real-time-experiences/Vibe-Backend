@@ -6,10 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
 import vn.vibeteam.vibe.dto.common.CursorResponse;
-import vn.vibeteam.vibe.dto.request.chat.CreateChannelRequest;
 import vn.vibeteam.vibe.dto.request.chat.CreateMessageRequest;
 import vn.vibeteam.vibe.dto.response.chat.ChannelHistoryResponse;
-import vn.vibeteam.vibe.dto.response.chat.ChannelResponse;
 import vn.vibeteam.vibe.dto.response.chat.CreateMessageResponse;
 import vn.vibeteam.vibe.service.chat.ChannelService;
 import vn.vibeteam.vibe.service.chat.ChatService;
@@ -29,8 +27,8 @@ public class ChannelController {
 
     @GetMapping("/{channelId}/messages")
     public ApiResponse<CursorResponse<ChannelHistoryResponse>> getChannelMessages(
-            @PathVariable String channelId,
-            @RequestParam(required = false) String cursor,
+            @PathVariable Long channelId,
+            @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "50")
             @Max(value = 50, message = "The  'limit' parameter cannot exceed 50.") int limit) {
 
@@ -47,7 +45,7 @@ public class ChannelController {
 
     @PostMapping("/{channelId}/messages")
     public ApiResponse<CreateMessageResponse> sendMessage(
-            @PathVariable String channelId,
+            @PathVariable Long channelId,
             @RequestBody CreateMessageRequest request) {
 
         long userId = securityUtils.getCurrentUserId();
@@ -61,18 +59,18 @@ public class ChannelController {
     }
 
     @PatchMapping("/{channelId}")
-    public String updateChannel(@PathVariable String channelId) {
+    public String updateChannel(@PathVariable Long channelId) {
         log.info("Update channel endpoint called");
         return "Channel updated";
     }
 
     @DeleteMapping("/{channelId}")
     public ApiResponse<Void> deleteChannel(
-            @PathVariable String channelId) {
+            @PathVariable Long channelId) {
 
         log.info("Delete channel endpoint called for, channelId: {}", channelId);
         long userId = securityUtils.getCurrentUserId();
-        channelService.deleteChannel(userId, Long.parseLong(channelId));
+        channelService.deleteChannel(userId, channelId);
         return ApiResponse.<Void>builder()
                           .code(200)
                           .message("Channel deleted successfully")

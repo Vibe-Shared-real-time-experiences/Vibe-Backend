@@ -65,7 +65,7 @@ public class ServerController {
     public ApiResponse<ServerDetailResponse> createServer(@RequestBody CreateServerRequest createServerRequest) {
         log.info("Create server endpoint called, server name: {}", createServerRequest.getName());
 
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         ServerDetailResponse response = serverService.createServer(userId, createServerRequest);
 
         return ApiResponse.<ServerDetailResponse>builder()
@@ -92,11 +92,11 @@ public class ServerController {
 
     @PostMapping("/{serverId}/channels")
     public ApiResponse<ChannelResponse> createChannel(
-            @PathVariable long serverId,
+            @PathVariable Long serverId,
             @RequestBody CreateChannelRequest CreateChannelRequest) {
 
         log.info("Create channel endpoint called");
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         ChannelResponse channelResponse = channelService.createChannel(userId, serverId, CreateChannelRequest);
 
         return ApiResponse.<ChannelResponse>builder()
@@ -121,8 +121,8 @@ public class ServerController {
 
     @GetMapping("/{serverId}/channels/{channelId}")
     public ApiResponse<ChannelResponse> getChannelsByServerId(
-            @PathVariable long serverId,
-            @PathVariable long channelId) {
+            @PathVariable Long serverId,
+            @PathVariable Long channelId) {
 
         log.info("Get channel by id endpoint called for serverId: {}, channelId: {}", serverId, channelId);
         ChannelResponse channelResponse = channelService.getChannelById(serverId, channelId);
@@ -135,10 +135,10 @@ public class ServerController {
     }
 
     @PostMapping("/{serverId}/join")
-    public ApiResponse<Void> joinServer(@PathVariable long serverId) {
+    public ApiResponse<Void> joinServer(@PathVariable Long serverId) {
         log.info("Join server endpoint called for server: {}", serverId);
 
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         serverService.joinServer(userId, serverId);
 
         return ApiResponse.<Void>builder()
@@ -148,10 +148,10 @@ public class ServerController {
     }
 
     @PostMapping("/{serverId}/leave")
-    public ApiResponse<Void> leaveServer(@PathVariable long serverId) {
+    public ApiResponse<Void> leaveServer(@PathVariable Long serverId) {
         log.info("Leave server endpoint called for server: {}", serverId);
 
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         serverService.leaveServer(userId, serverId);
 
         return ApiResponse.<Void>builder()
@@ -164,7 +164,7 @@ public class ServerController {
     public ApiResponse<List<ServerResponse>> listServers() {
         log.info("List servers endpoint called");
 
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         List<ServerResponse> response = serverService.getUserServers(userId);
 
         return ApiResponse.<List<ServerResponse>>builder()
@@ -175,10 +175,10 @@ public class ServerController {
     }
 
     @GetMapping("/{serverId}")
-    public ApiResponse<ServerDetailResponse> getServer(@PathVariable long serverId) {
+    public ApiResponse<ServerDetailResponse> getServer(@PathVariable Long serverId) {
         log.info("Get server endpoint called for server: {}", serverId);
 
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         ServerDetailResponse response = serverService.getServerById(userId, serverId);
 
         return ApiResponse.<ServerDetailResponse>builder()
@@ -189,10 +189,10 @@ public class ServerController {
     }
 
     @DeleteMapping("/{serverId}")
-    public ApiResponse<Void> deleteServer(@PathVariable long serverId) {
+    public ApiResponse<Void> deleteServer(@PathVariable Long serverId) {
         log.info("Delete server endpoint called for server: {}", serverId);
 
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         serverService.deleteServer(userId, serverId);
 
         return ApiResponse.<Void>builder()

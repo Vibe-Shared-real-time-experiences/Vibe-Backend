@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
-import vn.vibeteam.vibe.dto.request.chat.CreateCategoryRequest;
 import vn.vibeteam.vibe.service.chat.CategoryService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
@@ -19,12 +18,12 @@ public class CategoryController {
 
     @DeleteMapping("/{categoryId}")
     public ApiResponse<Void> deleteCategory(
-            @PathVariable String categoryId) {
+            @PathVariable Long categoryId) {
 
         log.info("Delete category with id: {}", categoryId);
 
-        long userId = securityUtils.getCurrentUserId();
-        categoryService.deleteCategory(userId, Long.parseLong(categoryId));
+        Long userId = securityUtils.getCurrentUserId();
+        categoryService.deleteCategory(userId, categoryId);
 
         return ApiResponse.<Void>builder()
                           .code(200)
