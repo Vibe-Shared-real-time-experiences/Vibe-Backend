@@ -2,13 +2,12 @@ package vn.vibeteam.vibe.controller.chat;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
 import vn.vibeteam.vibe.dto.request.chat.CreateChannelRequest;
 import vn.vibeteam.vibe.dto.response.chat.ChannelResponse;
 import vn.vibeteam.vibe.service.chat.ChannelService;
+import vn.vibeteam.vibe.util.SecurityUtils;
 
 import java.util.List;
 
@@ -19,6 +18,7 @@ import java.util.List;
 public class ChannelController {
 
     private final ChannelService channelService;
+    private final SecurityUtils securityUtils;
 
     @PostMapping("/servers/{serverId}/channels")
     public ApiResponse<ChannelResponse> createChannel(
@@ -26,8 +26,8 @@ public class ChannelController {
             @RequestBody CreateChannelRequest CreateChannelRequest) {
 
         log.info("Create channel endpoint called");
-
-        ChannelResponse channelResponse = channelService.createChannel(serverId, CreateChannelRequest);
+        Long userId = securityUtils.getCurrentUserId();
+        ChannelResponse channelResponse = channelService.createChannel(userId, serverId, CreateChannelRequest);
 
         return ApiResponse.<ChannelResponse>builder()
                           .code(200)
@@ -75,8 +75,8 @@ public class ChannelController {
             @PathVariable Long channelId) {
 
         log.info("Delete channel endpoint called for, channelId: {}", channelId);
-
-        channelService.deleteChannel(channelId);
+        Long userId = securityUtils.getCurrentUserId();
+        channelService.deleteChannel(userId, channelId);
         return ApiResponse.<Void>builder()
                           .code(200)
                           .message("Channel deleted successfully")

@@ -6,8 +6,8 @@ import vn.vibeteam.vibe.dto.response.chat.ChannelHistoryResponse;
 import vn.vibeteam.vibe.dto.response.chat.CreateMessageResponse;
 
 public interface ChatService {
-    CreateMessageResponse sendMessage(String channelId, CreateMessageRequest request);
+    CreateMessageResponse sendMessage(long userId, String channelId, CreateMessageRequest request);
     CursorResponse<ChannelHistoryResponse> getChannelMessages(String channelId, String cursor, int limit);
-    void editMessageContent(String messageId, String newContent);
-    void deleteMessage(String messageId);
+    void editMessageContent(long userId, String messageId, String newContent);
+    void deleteMessage(long userId, String messageId);
 }

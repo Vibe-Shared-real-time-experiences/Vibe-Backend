@@ -3,7 +3,6 @@ package vn.vibeteam.vibe.service.chat.impl;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import vn.vibeteam.vibe.common.ChannelType;
 import vn.vibeteam.vibe.dto.request.chat.CreateChannelRequest;
@@ -17,7 +16,6 @@ import vn.vibeteam.vibe.repository.chat.CategoryRepository;
 import vn.vibeteam.vibe.repository.chat.ChannelRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
 import vn.vibeteam.vibe.service.chat.ChannelService;
-import vn.vibeteam.vibe.util.SecurityUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,11 +29,9 @@ public class ChannelServiceImpl implements ChannelService {
     private final ServerRepository serverRepository;
     private final CategoryRepository categoryRepository;
 
-    private final SecurityUtils securityUtils;
-
     @Override
     @Transactional
-    public ChannelResponse createChannel(long serverId, CreateChannelRequest createChannelRequest) {
+    public ChannelResponse createChannel(long userId, long serverId, CreateChannelRequest createChannelRequest) {
         log.info("Creating channel in server: {}", serverId);
 
         // 1. Verify server exists and is not deleted
@@ -43,10 +39,10 @@ public class ChannelServiceImpl implements ChannelService {
                                         .orElseThrow(() -> new AppException(ErrorCode.SERVER_NOT_FOUND));
 
         // 2. Verify user is the server owner
-        boolean isOwner = isOwner(server.getOwner().getId());
+        boolean isOwner = isOwner(userId, server.getOwner().getId());
         if (!isOwner) {
             log.warn("User {} attempted to create channel in server {} without ownership",
-                     securityUtils.getCurrentUserId(), serverId);
+                     userId, serverId);
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
@@ -62,8 +58,6 @@ public class ChannelServiceImpl implements ChannelService {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
         }
-
-        System.out.println("Category: " + category);
 
         // 4. Create channel
         int position = 0;
@@ -88,9 +82,8 @@ public class ChannelServiceImpl implements ChannelService {
         return mapToChannelResponse(savedChannel);
     }
 
-    private boolean isOwner(Long ownerId) {
-        Long currentUserId = securityUtils.getCurrentUserId();
-        return ownerId.equals(currentUserId);
+    private boolean isOwner(long userId, Long ownerId) {
+        return ownerId.equals(userId);
     }
 
     @Override
@@ -133,7 +126,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     @Transactional
-    public void deleteChannel(long channelId) {
+    public void deleteChannel(long userId, long channelId) {
         log.info("Deleting channel: {}", channelId);
 
         // 1. Verify channel exists and is not deleted
@@ -145,10 +138,10 @@ public class ChannelServiceImpl implements ChannelService {
                                         .orElseThrow(() -> new AppException(ErrorCode.SERVER_NOT_FOUND));
 
         // 3. Verify user is the server owner
-        boolean isOwner = isOwner(server.getOwner().getId());
+        boolean isOwner = isOwner(userId, server.getOwner().getId());
         if (!isOwner) {
             log.warn("User {} attempted to delete channel {} without server ownership",
-                     securityUtils.getCurrentUserId(), channelId);
+                     userId, channelId);
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 

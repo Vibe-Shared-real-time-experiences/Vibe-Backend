@@ -16,7 +16,6 @@ import vn.vibeteam.vibe.dto.response.media.UploadMediaResponse;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
 import vn.vibeteam.vibe.service.media.MediaService;
-import vn.vibeteam.vibe.util.SecurityUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -31,13 +30,10 @@ import java.util.UUID;
 public class MediaServiceImpl implements MediaService {
 
     private final S3Client s3Client;
-
     private final Tika tika;
 
     @Value("${minio.bucket-name}")
     private String bucketName;
-
-    private final SecurityUtils securityUtils;
 
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
             "image/jpeg", "image/png", "image/gif", "image/webp", // Image
@@ -45,7 +41,8 @@ public class MediaServiceImpl implements MediaService {
             "video/mp4", "video/mpeg", "video/quicktime" // Video
     );
 
-    public UploadMediaResponse uploadFile(UploadMediaRequest request) {
+    @Override
+    public UploadMediaResponse uploadFile(long userId, UploadMediaRequest request) {
         MultipartFile file = request.getFile();
 
         if (file.isEmpty()) {
@@ -56,8 +53,7 @@ public class MediaServiceImpl implements MediaService {
         log.info("Uploading file: {}", file.getOriginalFilename());
 
         try {
-
-            // 1. Validate file type base on binary (InputStream)
+            // 1. Validate file type based on binary (InputStream)
             String detectedMimeType = tika.detect(file.getInputStream());
 
             if (!ALLOWED_MIME_TYPES.contains(detectedMimeType)) {
@@ -70,8 +66,7 @@ public class MediaServiceImpl implements MediaService {
 
             switch (request.getType()) {
                 case MediaType.AVATAR:
-                    String userId = String.valueOf(securityUtils.getCurrentUserId());
-                    objectKey = String.format("users/%s/avatar%s", userId, extension);
+                    objectKey = String.format("users/%d/avatar%s", userId, extension);
                     break;
 
                 case MediaType.SERVER_ICON:
@@ -87,17 +82,17 @@ public class MediaServiceImpl implements MediaService {
                     break;
             }
 
-            // 2. Create upload request
+            // 3. Create upload request
             PutObjectRequest putOb = PutObjectRequest.builder()
                                                      .bucket(bucketName)
                                                      .key(objectKey)
                                                      .contentType(detectedMimeType)
                                                      .build();
 
-            // 3. Push file to MinIO server
+            // 4. Push file to MinIO server
             s3Client.putObject(putOb, RequestBody.fromBytes(file.getBytes()));
 
-            // 4. Return file metadata info for FE
+            // 5. Return file metadata info for FE
             String finalObjectKey = objectKey;
             String finalUrl = s3Client.utilities().getUrl(builder -> builder.bucket(bucketName).key(finalObjectKey)).toExternalForm();
 

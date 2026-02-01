@@ -8,6 +8,6 @@ import vn.vibeteam.vibe.dto.response.chat.ServerResponse;
 import java.util.List;
 
 public interface CategoryService {
-    void createCategory(long serverId, CreateCategoryRequest createCategoryRequest);
-    void deleteCategory(long categoryId);
+    void createCategory(long userId, long serverId, CreateCategoryRequest createCategoryRequest);
+    void deleteCategory(long userId, long categoryId);
 }

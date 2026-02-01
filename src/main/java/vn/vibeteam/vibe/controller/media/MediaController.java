@@ -6,6 +6,7 @@ import vn.vibeteam.vibe.dto.common.ApiResponse;
 import vn.vibeteam.vibe.dto.request.media.UploadMediaRequest;
 import vn.vibeteam.vibe.dto.response.media.UploadMediaResponse;
 import vn.vibeteam.vibe.service.media.MediaService;
+import vn.vibeteam.vibe.util.SecurityUtils;
 
 @RestController
 @RequestMapping("/api/v1/media")
@@ -13,10 +14,12 @@ import vn.vibeteam.vibe.service.media.MediaService;
 public class MediaController {
 
     private final MediaService mediaService;
+    private final SecurityUtils securityUtils;
 
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     public ApiResponse<UploadMediaResponse> upload(@ModelAttribute UploadMediaRequest request) {
-        UploadMediaResponse uploadMediaResponse = mediaService.uploadFile(request);
+        Long userId = securityUtils.getCurrentUserId();
+        UploadMediaResponse uploadMediaResponse = mediaService.uploadFile(userId, request);
 
         return ApiResponse.<UploadMediaResponse>builder()
                 .code(200)

@@ -29,7 +29,6 @@ import vn.vibeteam.vibe.repository.chat.MessageRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
 import vn.vibeteam.vibe.repository.user.UserProfileRepository;
 import vn.vibeteam.vibe.service.chat.ChatService;
-import vn.vibeteam.vibe.util.SecurityUtils;
 import vn.vibeteam.vibe.util.SnowflakeIdGenerator;
 
 import java.util.List;
@@ -52,21 +51,17 @@ public class ChatServiceImpl implements ChatService {
     private static final String WEBSOCKET_CHANNEL_DESTINATION_PREFIX = "/topic/channels/";
     private static final String ATTACHMENT_BASE_URL = "https://vibe-attachments.s3.amazonaws.com/";
 
-    private final SecurityUtils securityUtils;
-
     @Override
-    public CreateMessageResponse sendMessage(String channelId, CreateMessageRequest request) {
+    public CreateMessageResponse sendMessage(long userId, String channelId, CreateMessageRequest request) {
         log.info("Sending message to channelId: {}", channelId);
 
         // 1. Find channel
         Channel channel = channelRepository.findById(Long.valueOf(channelId))
                                            .orElseThrow(() -> new AppException(ErrorCode.CHANNEL_NOT_FOUND));
 
-        Long currentUserId = securityUtils.getCurrentUserId();
-
         ServerMember member = serverRepository.findMemberByServerIdAndUserId(
                 channel.getServer().getId(),
-                currentUserId
+                userId
         ).orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_IN_SERVER));
 
         // 2. Create ChannelMessage
@@ -167,7 +162,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public void editMessageContent(String messageId, String newContent) {
+    public void editMessageContent(long userId, String messageId, String newContent) {
         log.info("Editing content of messageId: {}", messageId);
 
         // 1. Find message
@@ -176,10 +171,10 @@ public class ChatServiceImpl implements ChatService {
                                                                  () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
 
         // 2. Verify author
-        boolean isOwner = isAuthor(channelMessage.getAuthor().getId());
+        boolean isOwner = isAuthor(userId, channelMessage.getAuthor().getId());
         if (!isOwner) {
             log.error("User {} is trying to edit message {} without ownership",
-                      securityUtils.getCurrentUserId(), messageId);
+                      userId, messageId);
             throw new AppException(ErrorCode.UNAUTHORIZED_ACTION);
         }
 
@@ -191,7 +186,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public void deleteMessage(String messageId) {
+    public void deleteMessage(long userId, String messageId) {
         log.info("Deleting messageId: {}", messageId);
 
         // 1. Find message
@@ -200,11 +195,11 @@ public class ChatServiceImpl implements ChatService {
                                                                  () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
 
         // 2. Verify author
-        boolean isOwner = isAuthor(channelMessage.getAuthor().getId());
-        boolean isServerAdmin = isServerAdmin(channelMessage.getChannel().getServer().getId());
+        boolean isOwner = isAuthor(userId, channelMessage.getAuthor().getId());
+        boolean isServerAdmin = isServerAdmin(userId, channelMessage.getChannel().getServer().getId());
         if (!isOwner && !isServerAdmin) {
             log.error("User {} is trying to delete message {} without ownership",
-                      securityUtils.getCurrentUserId(), messageId);
+                      userId, messageId);
             throw new AppException(ErrorCode.UNAUTHORIZED_ACTION);
         }
 
@@ -213,14 +208,12 @@ public class ChatServiceImpl implements ChatService {
         log.info("Message {} deleted successfully", messageId);
     }
 
-    private boolean isAuthor(Long ownerId) {
-        Long currentUserId = securityUtils.getCurrentUserId();
-        return ownerId.equals(currentUserId);
+    private boolean isAuthor(long userId, Long authorId) {
+        return authorId.equals(userId);
     }
 
-    private boolean isServerAdmin(Long adminId) {
-        Long currentUserId = securityUtils.getCurrentUserId();
-        return adminId.equals(currentUserId);
+    private boolean isServerAdmin(long userId, Long serverId) {
+        return false;
     }
 
     private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages,

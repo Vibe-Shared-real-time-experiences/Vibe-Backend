@@ -3,10 +3,6 @@ package vn.vibeteam.vibe.service.chat.impl;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheConfig;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import vn.vibeteam.vibe.common.ChannelType;
 import vn.vibeteam.vibe.dto.request.chat.CreateServerRequest;
@@ -25,7 +21,6 @@ import vn.vibeteam.vibe.repository.chat.ServerMemberRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
 import vn.vibeteam.vibe.repository.user.UserRepository;
 import vn.vibeteam.vibe.service.chat.ServerService;
-import vn.vibeteam.vibe.util.SecurityUtils;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -41,19 +36,14 @@ public class ServerServiceImpl implements ServerService {
     private final ServerMemberRepository serverMemberRepository;
     private final UserRepository userRepository;
 
-    private final SecurityUtils securityUtils;
-
     @Override
     @Transactional
-    public ServerDetailResponse createServer(CreateServerRequest createServerRequest) {
+    public ServerDetailResponse createServer(long userId, CreateServerRequest createServerRequest) {
         log.info("Creating server: {}", createServerRequest.getName());
 
         // 1. Validate owner exists
-        Long ownerId = securityUtils.getCurrentUserId();
-        User owner = userRepository.findByIdAndIsActiveTrue(ownerId)
+        User owner = userRepository.findByIdAndIsActiveTrue(userId)
                                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        System.out.println("Owner found: " + owner.getId() + owner.getUsername());
 
         // 2. Create default server
         Server defaultServer = createDefaultServer(owner, createServerRequest);
@@ -76,10 +66,9 @@ public class ServerServiceImpl implements ServerService {
     }
 
     @Override
-    public ServerDetailResponse getServerById(long serverId) {
+    public ServerDetailResponse getServerById(long userId, long serverId) {
         log.info("Fetching server with ID: {}", serverId);
 
-        Long userId = securityUtils.getCurrentUserId();
         Server server = serverRepository.findServerDetailById(serverId)
                                         .orElseThrow(() -> new AppException(ErrorCode.SERVER_NOT_FOUND));
         ServerMember serverMember = serverMemberRepository.findByServerIdAndUserId(serverId, userId)
@@ -96,12 +85,11 @@ public class ServerServiceImpl implements ServerService {
     }
 
     @Override
-    public List<ServerResponse> getUserServers() {
-        Long userId = securityUtils.getCurrentUserId();
+    public List<ServerResponse> getUserServers(long userId) {
         log.info("Fetching servers for user: {}", userId);
 
-        var userExists = userRepository.findByIdAndIsActiveTrue(userId)
-                                       .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        userRepository.findByIdAndIsActiveTrue(userId)
+                      .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         List<ServerResponse> servers = serverMemberRepository.findByUserId(userId)
                                                              .stream()
@@ -115,8 +103,7 @@ public class ServerServiceImpl implements ServerService {
 
     @Override
     @Transactional
-    public void joinServer(long serverId) {
-        Long userId = securityUtils.getCurrentUserId();
+    public void joinServer(long userId, long serverId) {
         log.info("User {} attempting to join server {}", userId, serverId);
 
         Server server = serverRepository.findById(serverId)
@@ -162,8 +149,7 @@ public class ServerServiceImpl implements ServerService {
 
     @Override
     @Transactional
-    public void leaveServer(long serverId) {
-        Long userId = securityUtils.getCurrentUserId();
+    public void leaveServer(long userId, long serverId) {
         log.info("User {} attempting to leave server {}", userId, serverId);
 
         Server server = serverRepository.findById(serverId)
@@ -187,8 +173,7 @@ public class ServerServiceImpl implements ServerService {
 
     @Override
     @Transactional
-    public void deleteServer(long serverId) {
-        Long userId = securityUtils.getCurrentUserId();
+    public void deleteServer(long userId, long serverId) {
         log.info("User {} attempting to delete server {}", userId, serverId);
 
         Server server = serverRepository.findById(serverId)
@@ -202,60 +187,6 @@ public class ServerServiceImpl implements ServerService {
 
         serverRepository.deleteServerById(serverId);
         log.info("Server {} successfully deleted by user {}", serverId, userId);
-    }
-
-    // Create default server with standard settings (include categories and channels)
-    private Server createDefaultServer(User owner, CreateServerRequest createServerRequest) {
-        Server defaultServer = Server.builder()
-                                     .owner(owner)
-                                     .name(createServerRequest.getName())
-                                     .description(createServerRequest.getDescription())
-                                     .iconUrl(createServerRequest.getIconUrl())
-                                     .isPublic(createServerRequest.getPublicAccess() !=
-                                               null ? createServerRequest.getPublicAccess() : true)
-                                     .isActive(true)
-                                     .build();
-
-        Category defaultTextCategory = Category.builder()
-                                               .name("Text channels")
-                                               .position(0)
-                                               .isPublic(true)
-                                               .isActive(true)
-                                               .build();
-
-        Category defaultVoiceCategory = Category.builder()
-                                                .name("Voice Channels")
-                                                .position(1)
-                                                .isPublic(true)
-                                                .isActive(true)
-                                                .build();
-
-        Channel generalTextChannel = Channel.builder()
-                                            .name("General")
-                                            .type(ChannelType.TEXT)
-                                            .position(0)
-                                            .isPublic(true)
-                                            .isActive(true)
-                                            .build();
-
-        Channel generalVoiceChannel = Channel.builder()
-                                             .name("General")
-                                             .type(ChannelType.VOICE)
-                                             .position(0)
-                                             .isPublic(true)
-                                             .isActive(true)
-                                             .build();
-
-        defaultServer.addCategory(defaultTextCategory);
-        defaultServer.addCategory(defaultVoiceCategory);
-
-        defaultServer.addChannel(generalTextChannel);
-        defaultServer.addChannel(generalVoiceChannel);
-
-        defaultTextCategory.addChannel(generalTextChannel);
-        defaultVoiceCategory.addChannel(generalVoiceChannel);
-
-        return defaultServer;
     }
 
     private ServerResponse mapToServerResponse(Server server) {
@@ -317,5 +248,58 @@ public class ServerServiceImpl implements ServerService {
                               .type(channel.getType())
                               .position(channel.getPosition())
                               .build();
+    }
+
+    private Server createDefaultServer(User owner, CreateServerRequest createServerRequest) {
+        Server defaultServer = Server.builder()
+                                     .owner(owner)
+                                     .name(createServerRequest.getName())
+                                     .description(createServerRequest.getDescription())
+                                     .iconUrl(createServerRequest.getIconUrl())
+                                     .isPublic(createServerRequest.getPublicAccess() !=
+                                               null ? createServerRequest.getPublicAccess() : true)
+                                     .isActive(true)
+                                     .build();
+
+        Category defaultTextCategory = Category.builder()
+                                               .name("Text channels")
+                                               .position(0)
+                                               .isPublic(true)
+                                               .isActive(true)
+                                               .build();
+
+        Category defaultVoiceCategory = Category.builder()
+                                                .name("Voice Channels")
+                                                .position(1)
+                                                .isPublic(true)
+                                                .isActive(true)
+                                                .build();
+
+        Channel generalTextChannel = Channel.builder()
+                                            .name("General")
+                                            .type(ChannelType.TEXT)
+                                            .position(0)
+                                            .isPublic(true)
+                                            .isActive(true)
+                                            .build();
+
+        Channel generalVoiceChannel = Channel.builder()
+                                             .name("General")
+                                             .type(ChannelType.VOICE)
+                                             .position(0)
+                                             .isPublic(true)
+                                             .isActive(true)
+                                             .build();
+
+        defaultServer.addCategory(defaultTextCategory);
+        defaultServer.addCategory(defaultVoiceCategory);
+
+        defaultServer.addChannel(generalTextChannel);
+        defaultServer.addChannel(generalVoiceChannel);
+
+        defaultTextCategory.addChannel(generalTextChannel);
+        defaultVoiceCategory.addChannel(generalVoiceChannel);
+
+        return defaultServer;
     }
 }

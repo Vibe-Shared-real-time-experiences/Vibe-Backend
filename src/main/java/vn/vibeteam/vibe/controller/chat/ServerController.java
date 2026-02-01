@@ -7,14 +7,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
 import vn.vibeteam.vibe.dto.request.chat.CreateServerRequest;
 import vn.vibeteam.vibe.dto.response.chat.ServerDetailResponse;
 import vn.vibeteam.vibe.dto.response.chat.ServerResponse;
 import vn.vibeteam.vibe.service.chat.ServerService;
+import vn.vibeteam.vibe.util.SecurityUtils;
 
 import java.util.List;
 
@@ -26,6 +25,7 @@ import java.util.List;
 public class ServerController {
 
     private final ServerService serverService;
+    private final SecurityUtils securityUtils;
 
     @PostMapping("")
     @Operation(
@@ -58,7 +58,8 @@ public class ServerController {
     public ApiResponse<ServerDetailResponse> createServer(@RequestBody CreateServerRequest createServerRequest) {
         log.info("Create server endpoint called, server name: {}", createServerRequest.getName());
 
-        ServerDetailResponse response = serverService.createServer(createServerRequest);
+        Long userId = securityUtils.getCurrentUserId();
+        ServerDetailResponse response = serverService.createServer(userId, createServerRequest);
 
         return ApiResponse.<ServerDetailResponse>builder()
                           .code(200)
@@ -71,7 +72,8 @@ public class ServerController {
     public ApiResponse<Void> joinServer(@PathVariable Long serverId) {
         log.info("Join server endpoint called for server: {}", serverId);
 
-        serverService.joinServer(serverId);
+        Long userId = securityUtils.getCurrentUserId();
+        serverService.joinServer(userId, serverId);
 
         return ApiResponse.<Void>builder()
                           .code(200)
@@ -83,7 +85,8 @@ public class ServerController {
     public ApiResponse<Void> leaveServer(@PathVariable Long serverId) {
         log.info("Leave server endpoint called for server: {}", serverId);
 
-        serverService.leaveServer(serverId);
+        Long userId = securityUtils.getCurrentUserId();
+        serverService.leaveServer(userId, serverId);
 
         return ApiResponse.<Void>builder()
                           .code(200)
@@ -95,7 +98,8 @@ public class ServerController {
     public ApiResponse<List<ServerResponse>> listServers() {
         log.info("List servers endpoint called");
 
-        List<ServerResponse> response = serverService.getUserServers();
+        Long userId = securityUtils.getCurrentUserId();
+        List<ServerResponse> response = serverService.getUserServers(userId);
 
         return ApiResponse.<List<ServerResponse>>builder()
                           .code(200)
@@ -108,7 +112,8 @@ public class ServerController {
     public ApiResponse<ServerDetailResponse> getServer(@PathVariable Long serverId) {
         log.info("Get server endpoint called for server: {}", serverId);
 
-        ServerDetailResponse response = serverService.getServerById(serverId);
+        Long userId = securityUtils.getCurrentUserId();
+        ServerDetailResponse response = serverService.getServerById(userId, serverId);
 
         return ApiResponse.<ServerDetailResponse>builder()
                           .code(200)
@@ -121,7 +126,8 @@ public class ServerController {
     public ApiResponse<Void> deleteServer(@PathVariable Long serverId) {
         log.info("Delete server endpoint called for server: {}", serverId);
 
-        serverService.deleteServer(serverId);
+        Long userId = securityUtils.getCurrentUserId();
+        serverService.deleteServer(userId, serverId);
 
         return ApiResponse.<Void>builder()
                           .code(200)

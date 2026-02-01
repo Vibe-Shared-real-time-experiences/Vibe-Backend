@@ -2,12 +2,11 @@ package vn.vibeteam.vibe.controller.chat;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
 import vn.vibeteam.vibe.dto.request.chat.CreateCategoryRequest;
 import vn.vibeteam.vibe.service.chat.CategoryService;
+import vn.vibeteam.vibe.util.SecurityUtils;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -16,6 +15,7 @@ import vn.vibeteam.vibe.service.chat.CategoryService;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final SecurityUtils securityUtils;
 
     @PostMapping("/servers/{serverId}/categories")
     public ApiResponse<Void> createCategory(
@@ -24,7 +24,8 @@ public class CategoryController {
 
         log.info("Create category for server id: {}, category name: {}", serverId, createCategoryRequest.getName());
 
-        categoryService.createCategory(serverId, createCategoryRequest);
+        Long userId = securityUtils.getCurrentUserId();
+        categoryService.createCategory(userId, serverId, createCategoryRequest);
         return ApiResponse.<Void>builder()
                           .code(200)
                           .message("Category created successfully")
@@ -33,11 +34,12 @@ public class CategoryController {
 
     @DeleteMapping("/categories/{categoryId}")
     public ApiResponse<Void> deleteCategory(
-            @PathVariable Long serverId,
             @PathVariable Long categoryId) {
 
-        log.info("Delete category with id: {} from server id: {}", categoryId, serverId);
-        categoryService.deleteCategory(categoryId);
+        log.info("Delete category with id: {}", categoryId);
+
+        Long userId = securityUtils.getCurrentUserId();
+        categoryService.deleteCategory(userId, categoryId);
 
         return ApiResponse.<Void>builder()
                           .code(200)

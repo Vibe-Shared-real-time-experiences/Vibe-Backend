@@ -10,6 +10,7 @@ import vn.vibeteam.vibe.dto.request.chat.CreateMessageRequest;
 import vn.vibeteam.vibe.dto.response.chat.ChannelHistoryResponse;
 import vn.vibeteam.vibe.dto.response.chat.CreateMessageResponse;
 import vn.vibeteam.vibe.service.chat.ChatService;
+import vn.vibeteam.vibe.util.SecurityUtils;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -18,6 +19,7 @@ import vn.vibeteam.vibe.service.chat.ChatService;
 public class MessageController {
 
     private final ChatService chatService;
+    private final SecurityUtils securityUtils;
 
     @GetMapping("/channels/{channelId}/messages")
     public ApiResponse<CursorResponse<ChannelHistoryResponse>> getChannelMessages(
@@ -42,7 +44,8 @@ public class MessageController {
             @PathVariable String channelId,
             @RequestBody CreateMessageRequest request) {
 
-        CreateMessageResponse response = chatService.sendMessage(channelId, request);
+        Long userId = securityUtils.getCurrentUserId();
+        CreateMessageResponse response = chatService.sendMessage(userId, channelId, request);
 
         return ApiResponse.<CreateMessageResponse>builder()
                           .code(200)
@@ -56,7 +59,8 @@ public class MessageController {
             @PathVariable String messageId,
             @RequestBody String newContent) {
 
-        chatService.editMessageContent(messageId, newContent);
+        Long userId = securityUtils.getCurrentUserId();
+        chatService.editMessageContent(userId, messageId, newContent);
 
         return ApiResponse.<Void>builder()
                           .code(200)
@@ -68,7 +72,8 @@ public class MessageController {
     @DeleteMapping("/messages/{messageId}")
     public ApiResponse<Void> deleteMessage(@PathVariable String messageId) {
 
-        chatService.deleteMessage(messageId);
+        Long userId = securityUtils.getCurrentUserId();
+        chatService.deleteMessage(userId, messageId);
 
         return ApiResponse.<Void>builder()
                           .code(200)

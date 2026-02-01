@@ -7,10 +7,10 @@ import vn.vibeteam.vibe.dto.response.chat.ServerResponse;
 import java.util.List;
 
 public interface ServerService {
-    ServerDetailResponse createServer(CreateServerRequest createServerRequest);
-    ServerDetailResponse getServerById(long serverId);
-    List<ServerResponse> getUserServers();
-    void joinServer(long serverId);
-    void leaveServer(long serverId);
-    void deleteServer(long serverId);
+    ServerDetailResponse createServer(long userId, CreateServerRequest createServerRequest);
+    ServerDetailResponse getServerById(long userId, long serverId);
+    List<ServerResponse> getUserServers(long userId);
+    void joinServer(long userId, long serverId);
+    void leaveServer(long userId, long serverId);
+    void deleteServer(long userId, long serverId);
 }

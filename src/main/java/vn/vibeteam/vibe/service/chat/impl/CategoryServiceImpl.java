@@ -12,7 +12,6 @@ import vn.vibeteam.vibe.model.server.Server;
 import vn.vibeteam.vibe.repository.chat.CategoryRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
 import vn.vibeteam.vibe.service.chat.CategoryService;
-import vn.vibeteam.vibe.util.SecurityUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -22,11 +21,9 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepository categoryRepository;
     private final ServerRepository serverRepository;
 
-    private final SecurityUtils securityUtils;
-
     @Override
     @Transactional
-    public void createCategory(long serverId, CreateCategoryRequest createCategoryRequest) {
+    public void createCategory(long userId, long serverId, CreateCategoryRequest createCategoryRequest) {
         log.info("Creating category in server: {}", serverId);
 
         // 1. Verify server exists and is not deleted
@@ -34,9 +31,9 @@ public class CategoryServiceImpl implements CategoryService {
                                         .orElseThrow(() -> new AppException(ErrorCode.SERVER_NOT_FOUND));
 
         // 2. Verify user is the server owner
-        boolean isOwner = isOwner(server.getOwner().getId());
+        boolean isOwner = isOwner(userId, server.getOwner().getId());
         if (!isOwner) {
-            log.warn("User {} attempted to create category in server {} without ownership", securityUtils.getCurrentUserId(), serverId);
+            log.warn("User {} attempted to create category in server {} without ownership", userId, serverId);
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
@@ -55,7 +52,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public void deleteCategory(long categoryId) {
+    public void deleteCategory(long userId, long categoryId) {
         log.info("Deleting category: {}", categoryId);
 
         // 1. Verify category exists and is not deleted
@@ -67,10 +64,10 @@ public class CategoryServiceImpl implements CategoryService {
                                         .orElseThrow(() -> new AppException(ErrorCode.SERVER_NOT_FOUND));
 
         // 3. Verify user is the server owner
-        boolean isOwner = isOwner(server.getOwner().getId());
+        boolean isOwner = isOwner(userId, server.getOwner().getId());
         if (!isOwner) {
             log.warn("User {} attempted to delete category {} in server {} without ownership",
-                     securityUtils.getCurrentUserId(), categoryId, server.getId());
+                     userId, categoryId, server.getId());
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
@@ -79,8 +76,7 @@ public class CategoryServiceImpl implements CategoryService {
         log.info("Category {} deleted successfully", categoryId);
     }
 
-    private boolean isOwner(Long ownerId) {
-        Long currentUserId = securityUtils.getCurrentUserId();
-        return currentUserId.equals(ownerId);
+    private boolean isOwner(long userId, Long ownerId) {
+        return userId == ownerId;
     }
 }
