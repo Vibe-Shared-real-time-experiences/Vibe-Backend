@@ -2,7 +2,6 @@ package vn.vibeteam.vibe.model.server;
 
 import jakarta.persistence.*;
 import lombok.*;
-import vn.vibeteam.vibe.model.authorization.User;
 
 @Entity
 @Table(name = "member_roles")

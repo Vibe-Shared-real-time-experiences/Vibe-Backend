@@ -1,4 +1,4 @@
-package vn.vibeteam.vibe.model.authorization;
+package vn.vibeteam.vibe.model.user;
 
 import jakarta.persistence.*;
 import lombok.*;

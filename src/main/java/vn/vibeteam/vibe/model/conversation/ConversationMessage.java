@@ -5,10 +5,10 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
-import vn.vibeteam.vibe.model.authorization.User;
+import vn.vibeteam.vibe.model.user.User;
 import vn.vibeteam.vibe.model.common.BaseEntity;
-import vn.vibeteam.vibe.model.server.MessageAttachment;
-import vn.vibeteam.vibe.model.server.MessageMetadata;
+import vn.vibeteam.vibe.model.channel.MessageAttachment;
+import vn.vibeteam.vibe.model.channel.MessageMetadata;
 
 import java.util.List;
 

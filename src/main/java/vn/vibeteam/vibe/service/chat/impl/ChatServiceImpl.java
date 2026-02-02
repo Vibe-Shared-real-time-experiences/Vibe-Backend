@@ -19,10 +19,10 @@ import vn.vibeteam.vibe.dto.websocket.WsMessageResponse;
 import vn.vibeteam.vibe.dto.websocket.WsUserSummary;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
-import vn.vibeteam.vibe.model.authorization.UserProfile;
-import vn.vibeteam.vibe.model.server.Channel;
-import vn.vibeteam.vibe.model.server.ChannelMessage;
-import vn.vibeteam.vibe.model.server.MessageAttachment;
+import vn.vibeteam.vibe.model.user.UserProfile;
+import vn.vibeteam.vibe.model.channel.Channel;
+import vn.vibeteam.vibe.model.channel.ChannelMessage;
+import vn.vibeteam.vibe.model.channel.MessageAttachment;
 import vn.vibeteam.vibe.model.server.ServerMember;
 import vn.vibeteam.vibe.repository.chat.ChannelRepository;
 import vn.vibeteam.vibe.repository.chat.MessageRepository;
@@ -53,6 +53,7 @@ public class ChatServiceImpl implements ChatService {
     private static final String ATTACHMENT_BASE_URL = "https://vibe-attachments.s3.amazonaws.com/";
 
     @Override
+    @Transactional
     public CreateMessageResponse sendMessage(Long userId, Long channelId, CreateMessageRequest request) {
         log.info("Sending message to channelId: {}", channelId);
 
@@ -96,7 +97,10 @@ public class ChatServiceImpl implements ChatService {
         ChannelMessage channelMessages = channelMessageBuilder.build();
         channelMessages = messageRepository.save(channelMessages);
 
-        // 4. Broadcast message (server + channel)
+        // 4. Update channel's last message info
+        channelRepository.updateLastMessageId(channelId, channelMessages.getId());
+
+        // 5. Broadcast message (server + channel)
         WsEvent<WsMessageResponse> wsChannelEvent = createWsChannelEvent(channelMessages);
 
         // TODO: Remove this line after testing

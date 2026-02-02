@@ -1,10 +1,12 @@
-package vn.vibeteam.vibe.model.server;
+package vn.vibeteam.vibe.model.channel;
 
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 import vn.vibeteam.vibe.common.ChannelType;
 import vn.vibeteam.vibe.model.common.BaseEntity;
+import vn.vibeteam.vibe.model.server.Category;
+import vn.vibeteam.vibe.model.server.Server;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -45,6 +47,11 @@ public class Channel extends BaseEntity {
 
     @Column(name = "is_active")
     private Boolean isActive;
+
+//    last_message_id BIGINT,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "last_message_id")
+    private ChannelMessage lastMessage;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

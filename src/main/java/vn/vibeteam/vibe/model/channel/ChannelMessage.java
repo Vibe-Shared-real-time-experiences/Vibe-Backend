@@ -1,4 +1,4 @@
-package vn.vibeteam.vibe.model.server;
+package vn.vibeteam.vibe.model.channel;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 import vn.vibeteam.vibe.model.common.BaseEntity;
+import vn.vibeteam.vibe.model.server.ServerMember;
 
 import java.util.List;
 

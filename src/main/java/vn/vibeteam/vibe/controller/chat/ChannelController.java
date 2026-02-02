@@ -9,6 +9,7 @@ import vn.vibeteam.vibe.dto.common.CursorResponse;
 import vn.vibeteam.vibe.dto.request.chat.CreateMessageRequest;
 import vn.vibeteam.vibe.dto.response.chat.ChannelHistoryResponse;
 import vn.vibeteam.vibe.dto.response.chat.CreateMessageResponse;
+import vn.vibeteam.vibe.dto.response.user.UserReadStateResponse;
 import vn.vibeteam.vibe.service.chat.ChannelService;
 import vn.vibeteam.vibe.service.chat.ChatService;
 import vn.vibeteam.vibe.util.SecurityUtils;
@@ -48,7 +49,7 @@ public class ChannelController {
             @PathVariable Long channelId,
             @RequestBody CreateMessageRequest request) {
 
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         CreateMessageResponse response = chatService.sendMessage(userId, channelId, request);
 
         return ApiResponse.<CreateMessageResponse>builder()
@@ -57,6 +58,33 @@ public class ChannelController {
                           .data(response)
                           .build();
     }
+
+    @GetMapping("/{channelId}/read-states")
+    public ApiResponse<UserReadStateResponse> getUserReadStateInChannel(@PathVariable Long channelId) {
+
+        Long userId = securityUtils.getCurrentUserId();
+        UserReadStateResponse userReadStatesInChannel = channelService.getUserReadStateInChannel(userId, channelId);
+
+        return ApiResponse.<UserReadStateResponse>builder()
+                          .code(200)
+                          .message("Channel read states retrieved successfully")
+                          .data(userReadStatesInChannel)
+                          .build();
+    }
+
+    @PostMapping("/{channelId}/read-states")
+    public ApiResponse<Void> updateUserReadStateInChannel(@PathVariable Long channelId) {
+
+        Long userId = securityUtils.getCurrentUserId();
+        UserReadStateResponse userReadStatesInChannel = channelService.getUserReadStateInChannel(userId, channelId);
+
+        return ApiResponse.<Void>builder()
+                          .code(200)
+                          .message("Channel read states retrieved successfully")
+                          .data(null)
+                          .build();
+    }
+
 
     @PatchMapping("/{channelId}")
     public String updateChannel(@PathVariable Long channelId) {
@@ -69,7 +97,7 @@ public class ChannelController {
             @PathVariable Long channelId) {
 
         log.info("Delete channel endpoint called for, channelId: {}", channelId);
-        long userId = securityUtils.getCurrentUserId();
+        Long userId = securityUtils.getCurrentUserId();
         channelService.deleteChannel(userId, channelId);
         return ApiResponse.<Void>builder()
                           .code(200)

@@ -26,7 +26,6 @@ spring:
   cache:
     type: redis
 
-
 # MinIO / S3 Configuration
 minio:
   endpoint: http://localhost:9000

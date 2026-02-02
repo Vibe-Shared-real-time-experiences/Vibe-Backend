@@ -1,12 +1,11 @@
 package vn.vibeteam.vibe.repository.chat;
 
-import aj.org.objectweb.asm.commons.Remapper;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-import vn.vibeteam.vibe.model.server.ChannelMessage;
+import vn.vibeteam.vibe.model.channel.ChannelMessage;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,4 +29,15 @@ public interface MessageRepository extends JpaRepository<ChannelMessage, Long> {
     void deleteMessage(Long messageId);
 
     Optional<ChannelMessage> findByClientUniqueId(String uniqueId);
+
+    @Query(value = """
+        SELECT COUNT(id) 
+        FROM (
+            SELECT id FROM channel_messages 
+            WHERE channel_id = :channelId 
+            AND id > :lastReadId 
+            LIMIT limit
+        ) as unread_messages
+    """, nativeQuery = true)
+    Long countUnreadMessagesInChannel(Long channelId, Long lastReadId, int limit);
 }

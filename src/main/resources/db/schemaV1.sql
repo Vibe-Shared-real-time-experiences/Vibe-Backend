@@ -111,10 +111,11 @@ CREATE TABLE channels
     server_id   BIGSERIAL REFERENCES servers (id) ON DELETE CASCADE,
     category_id BIGSERIAL REFERENCES categories (id) ON DELETE CASCADE,
     name        VARCHAR(100), -- Nullable for DMs
-    type        VARCHAR(20) NOT NULL CHECK (type IN ('TEXT', 'VOICE', 'DM')),
+    type        VARCHAR(20) NOT NULL CHECK (type IN ('TEXT', 'VOICE', 'DM', 'GROUP_DM')),
     position    INT         NOT NULL     DEFAULT 0,
     is_public   BOOLEAN     NOT NULL     DEFAULT TRUE,
     is_active   BOOLEAN     NOT NULL     DEFAULT TRUE,
+    last_message_id BIGINT,
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE,
     is_deleted  BOOLEAN     NOT NULL     DEFAULT FALSE
@@ -193,12 +194,21 @@ CREATE TABLE channel_messages
     is_deleted  BOOLEAN                  DEFAULT FALSE
 );
 
-CREATE TABLE channel_read_states
+-- FOR DM & GROUP DM CHANNELS
+CREATE TABLE channel_members (
+    id BIGSERIAL PRIMARY KEY,
+    channel_id BIGINT REFERENCES channels(id),
+    user_id BIGINT REFERENCES users(id),
+    joined_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (channel_id, user_id)
+);
+
+CREATE TABLE user_read_states
 (
     id                   BIGSERIAL PRIMARY KEY,
     user_id              BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     channel_id           BIGSERIAL NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
-    last_read_message_id BIGINT NOT NULL DEFAULT 0,
+    last_read_message_id BIGINT,
     last_updated         TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE (user_id, channel_id)
 );
@@ -363,7 +373,7 @@ VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
          FROM categories
          WHERE name = 'General'
            AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server')),
-        'general-chat',
+        'general-chat#1',
         'TEXT',
         0),
        ((SELECT id FROM servers WHERE name = 'Admin Server'),
@@ -371,9 +381,25 @@ VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
          FROM categories
          WHERE name = 'General'
            AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server')),
+        'general-chat#2',
+        'TEXT',
+        1),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id
+         FROM categories
+         WHERE name = 'General'
+           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server')),
+        'general-chat#3',
+        'TEXT',
+        2),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id
+         FROM categories
+         WHERE name = 'General'
+           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server')),
         'voice-chat',
         'VOICE',
-        1);
+        0);
 
 -- Add admin as server member
 INSERT INTO server_members (server_id, user_id, nickname)
@@ -446,3 +472,12 @@ $$
             END LOOP;
     END
 $$;
+
+-- Update last_message_id in channels
+UPDATE channels
+SET last_message_id = sub.max_id
+FROM (SELECT channel_id, MAX(id) AS max_id
+      FROM channel_messages
+      GROUP BY channel_id) AS sub
+WHERE channels.id = sub.channel_id
+AND channels.type = 'TEXT';

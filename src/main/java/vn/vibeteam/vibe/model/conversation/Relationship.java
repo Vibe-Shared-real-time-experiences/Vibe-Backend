@@ -2,8 +2,7 @@ package vn.vibeteam.vibe.model.conversation;
 
 import jakarta.persistence.*;
 import lombok.*;
-import vn.vibeteam.vibe.model.authorization.User;
-import vn.vibeteam.vibe.model.common.BaseEntity;
+import vn.vibeteam.vibe.model.user.User;
 
 @Entity
 @Table(name = "relationships")

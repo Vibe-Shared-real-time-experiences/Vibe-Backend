@@ -13,8 +13,10 @@ import vn.vibeteam.vibe.dto.request.chat.CreateCategoryRequest;
 import vn.vibeteam.vibe.dto.request.chat.CreateChannelRequest;
 import vn.vibeteam.vibe.dto.request.chat.CreateServerRequest;
 import vn.vibeteam.vibe.dto.response.chat.ChannelResponse;
+import vn.vibeteam.vibe.dto.response.chat.ChannelUnreadResponse;
 import vn.vibeteam.vibe.dto.response.chat.ServerDetailResponse;
 import vn.vibeteam.vibe.dto.response.chat.ServerResponse;
+import vn.vibeteam.vibe.dto.response.user.UserReadStateResponse;
 import vn.vibeteam.vibe.service.chat.CategoryService;
 import vn.vibeteam.vibe.service.chat.ChannelService;
 import vn.vibeteam.vibe.service.chat.ServerService;
@@ -185,6 +187,18 @@ public class ServerController {
                           .code(200)
                           .message("Server retrieved successfully")
                           .data(response)
+                          .build();
+    }
+
+    @GetMapping("/{serverId}/read-states")
+    public ApiResponse<List<ChannelUnreadResponse>> getUserReadStateOnServer(@PathVariable Long serverId) {
+        Long userId = securityUtils.getCurrentUserId();
+        List<ChannelUnreadResponse> channelUnreadResponses = serverService.getUserReadStateInServer(userId, serverId);
+
+        return ApiResponse.<List<ChannelUnreadResponse>>builder()
+                          .code(200)
+                          .message("Channel read states retrieved successfully")
+                          .data(channelUnreadResponses)
                           .build();
     }
 

@@ -3,7 +3,8 @@ package vn.vibeteam.vibe.model.server;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
-import vn.vibeteam.vibe.model.authorization.User;
+import vn.vibeteam.vibe.model.channel.Channel;
+import vn.vibeteam.vibe.model.user.User;
 import vn.vibeteam.vibe.model.common.BaseEntity;
 
 import java.util.HashSet;

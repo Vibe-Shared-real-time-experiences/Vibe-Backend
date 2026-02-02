@@ -5,7 +5,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
-import vn.vibeteam.vibe.model.authorization.User;
 
 @Component
 public class SecurityUtils {

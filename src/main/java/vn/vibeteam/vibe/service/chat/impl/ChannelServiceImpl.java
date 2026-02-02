@@ -7,14 +7,16 @@ import org.springframework.stereotype.Service;
 import vn.vibeteam.vibe.common.ChannelType;
 import vn.vibeteam.vibe.dto.request.chat.CreateChannelRequest;
 import vn.vibeteam.vibe.dto.response.chat.ChannelResponse;
+import vn.vibeteam.vibe.dto.response.user.UserReadStateResponse;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
 import vn.vibeteam.vibe.model.server.Category;
-import vn.vibeteam.vibe.model.server.Channel;
+import vn.vibeteam.vibe.model.channel.Channel;
 import vn.vibeteam.vibe.model.server.Server;
-import vn.vibeteam.vibe.repository.chat.CategoryRepository;
-import vn.vibeteam.vibe.repository.chat.ChannelRepository;
-import vn.vibeteam.vibe.repository.chat.ServerRepository;
+import vn.vibeteam.vibe.repository.chat.*;
+import vn.vibeteam.vibe.repository.user.UserReadStateRepository;
+import vn.vibeteam.vibe.repository.user.UserRepository;
+import vn.vibeteam.vibe.service.auth.ChannelGatekeeper;
 import vn.vibeteam.vibe.service.chat.ChannelService;
 
 import java.util.List;
@@ -25,13 +27,16 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ChannelServiceImpl implements ChannelService {
 
+    private final ChannelGatekeeper channelGatekeeper;
     private final ChannelRepository channelRepository;
     private final ServerRepository serverRepository;
     private final CategoryRepository categoryRepository;
+    private final UserReadStateRepository userReadStateRepository;
+    private final MessageRepository messageRepository;
 
     @Override
     @Transactional
-    public ChannelResponse createChannel(long userId, long serverId, CreateChannelRequest createChannelRequest) {
+    public ChannelResponse createChannel(Long userId, Long serverId, CreateChannelRequest createChannelRequest) {
         log.info("Creating channel in server: {}", serverId);
 
         // 1. Verify server exists and is not deleted
@@ -52,9 +57,9 @@ public class ChannelServiceImpl implements ChannelService {
             Long categoryId = Long.parseLong(createChannelRequest.getCategoryId());
             category = categoryRepository.findById(categoryId)
                                          .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
-            // Verify category belongs to this server
+            // Verify category beLongs to this server
             if (!category.getServer().getId().equals(serverId)) {
-                log.warn("Category {} does not belong to server {}", categoryId, serverId);
+                log.warn("Category {} does not beLong to server {}", categoryId, serverId);
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
         }
@@ -82,12 +87,12 @@ public class ChannelServiceImpl implements ChannelService {
         return mapToChannelResponse(savedChannel);
     }
 
-    private boolean isOwner(long userId, Long ownerId) {
+    private boolean isOwner(Long userId, Long ownerId) {
         return ownerId.equals(userId);
     }
 
     @Override
-    public List<ChannelResponse> listChannelsByServerId(long serverId) {
+    public List<ChannelResponse> listChannelsByServerId(Long serverId) {
         log.info("Listing channels for server: {}", serverId);
 
         // Verify server exists
@@ -104,19 +109,19 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     @Override
-    public ChannelResponse getChannelById(long serverId, long channelId) {
+    public ChannelResponse getChannelById(Long serverId, Long channelId) {
         log.info("Fetching channel {} from server {}", channelId, serverId);
 
         // 1. Verify server exists
         serverRepository.findById(serverId)
                         .orElseThrow(() -> new AppException(ErrorCode.SERVER_NOT_FOUND));
 
-        // 2. Verify channel exists and belongs to the server
+        // 2. Verify channel exists and beLongs to the server
         Channel channel = channelRepository.findById(channelId)
                                            .orElseThrow(() -> new AppException(ErrorCode.CHANNEL_NOT_FOUND));
 
         if (!channel.getServer().getId().equals(serverId)) {
-            log.warn("Channel {} does not belong to server {}", channelId, serverId);
+            log.warn("Channel {} does not beLong to server {}", channelId, serverId);
             throw new AppException(ErrorCode.CHANNEL_NOT_FOUND);
         }
 
@@ -125,8 +130,45 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     @Override
+    public UserReadStateResponse getUserReadStateInChannel(Long userId, Long channelId) {
+        log.info("Fetching read state for user {} in channel {}", userId, channelId);
+
+        // 1. Check access permissions
+        Channel channel = channelGatekeeper.validateChannelAccess(userId, channelId);
+
+        // 2. Return read state response
+        Long lastReadId = userReadStateRepository.findByUserIdAndChannelId(userId, channelId)
+                                                 .map(state -> state.getLastReadMessage() !=
+                                                               null ? state.getLastReadMessage().getId() : 0L)
+                                                 .orElse(0L);
+
+        Long unreadCount = messageRepository.countUnreadMessagesInChannel(channelId, lastReadId, 51);
+        UserReadStateResponse userReadStateResponse = UserReadStateResponse.builder()
+                                                                           .userId(userId)
+                                                                           .channelId(channelId)
+                                                                           .lastReadMessageId(lastReadId)
+                                                                           .unreadCount(unreadCount)
+                                                                           .build();
+
+        log.info("Read state for user {} in channel {} fetched successfully", userId, channelId);
+        return userReadStateResponse;
+    }
+
+    @Override
+    public void updateUserReadStateInChannel(Long userId, Long channelId, Long messageId) {
+        log.info("Updating read state for user {} in channel {}", userId, channelId);
+
+        // 1. Check access permissions
+        Channel channel = channelGatekeeper.validateChannelAccess(userId, channelId);
+
+        // 2, Upsert user read state
+        userReadStateRepository.upsertReadState(userId, channelId, messageId);
+        log.info("Update read state for user {} in channel {} successfully", userId, channelId);
+    }
+
+    @Override
     @Transactional
-    public void deleteChannel(long userId, long channelId) {
+    public void deleteChannel(Long userId, Long channelId) {
         log.info("Deleting channel: {}", channelId);
 
         // 1. Verify channel exists and is not deleted

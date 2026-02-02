@@ -1,24 +1,27 @@
-package vn.vibeteam.vibe.model.server;
+package vn.vibeteam.vibe.model.user;
 
 import jakarta.persistence.*;
 import lombok.*;
+import vn.vibeteam.vibe.model.channel.Channel;
+import vn.vibeteam.vibe.model.channel.ChannelMessage;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "channel_read_states")
+@Table(name = "user_read_states")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
 @Builder
-public class ChannelReadState {
+public class UserReadState {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private ServerMember user;
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "channel_id")

@@ -6,23 +6,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import vn.vibeteam.vibe.common.ChannelType;
 import vn.vibeteam.vibe.dto.request.chat.CreateServerRequest;
-import vn.vibeteam.vibe.dto.response.chat.CategoryResponse;
-import vn.vibeteam.vibe.dto.response.chat.ChannelResponse;
-import vn.vibeteam.vibe.dto.response.chat.ServerDetailResponse;
-import vn.vibeteam.vibe.dto.response.chat.ServerResponse;
+import vn.vibeteam.vibe.dto.response.chat.*;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
-import vn.vibeteam.vibe.model.authorization.User;
+import vn.vibeteam.vibe.model.user.User;
 import vn.vibeteam.vibe.model.server.Category;
-import vn.vibeteam.vibe.model.server.Channel;
+import vn.vibeteam.vibe.model.channel.Channel;
 import vn.vibeteam.vibe.model.server.Server;
 import vn.vibeteam.vibe.model.server.ServerMember;
+import vn.vibeteam.vibe.repository.chat.ChannelRepository;
 import vn.vibeteam.vibe.repository.chat.ServerMemberRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
 import vn.vibeteam.vibe.repository.user.UserRepository;
 import vn.vibeteam.vibe.service.chat.ServerService;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,10 +34,11 @@ public class ServerServiceImpl implements ServerService {
     private final ServerRepository serverRepository;
     private final ServerMemberRepository serverMemberRepository;
     private final UserRepository userRepository;
+    private final ChannelRepository channelRepository;
 
     @Override
     @Transactional
-    public ServerDetailResponse createServer(long userId, CreateServerRequest createServerRequest) {
+    public ServerDetailResponse createServer(Long userId, CreateServerRequest createServerRequest) {
         log.info("Creating server: {}", createServerRequest.getName());
 
         // 1. Validate owner exists
@@ -66,7 +66,7 @@ public class ServerServiceImpl implements ServerService {
     }
 
     @Override
-    public ServerDetailResponse getServerById(long userId, long serverId) {
+    public ServerDetailResponse getServerById(Long userId, Long serverId) {
         log.info("Fetching server with ID: {}", serverId);
 
         Server server = serverRepository.findServerDetailById(serverId)
@@ -85,7 +85,7 @@ public class ServerServiceImpl implements ServerService {
     }
 
     @Override
-    public List<ServerResponse> getUserServers(long userId) {
+    public List<ServerResponse> getUserServers(Long userId) {
         log.info("Fetching servers for user: {}", userId);
 
         userRepository.findByIdAndIsActiveTrue(userId)
@@ -102,8 +102,36 @@ public class ServerServiceImpl implements ServerService {
     }
 
     @Override
+    public List<ChannelUnreadResponse> getUserReadStateInServer(Long userId, Long serverId) {
+        log.info("Fetching read states for user {} in server {}", userId, serverId);
+
+        List<ChannelUnreadResponse> channelUnreadResponses = new ArrayList<>();
+
+        // 1. TODO: Check if user is a member of the server
+
+        // 2. Get all unread states for channels in the server
+        List<ChannelRepository.ChannelUnreadProjection> channelUnreadStates =
+                channelRepository.getChannelUnreadStates(serverId, userId);
+
+        channelUnreadStates.forEach(projection -> {
+            boolean isUnread = projection.getLastMessageId() != null &&
+                               !projection.getLastMessageId().equals(projection.getLastReadMessageId());
+            ChannelUnreadResponse response = ChannelUnreadResponse.builder()
+                                                                  .channelId(projection.getChannelId())
+                                                                  .lastMessageId(projection.getLastMessageId())
+                                                                  .lastReadMessageId(projection.getLastReadMessageId())
+                                                                  .unread(isUnread)
+                                                                  .build();
+            channelUnreadResponses.add(response);
+        });
+
+        log.info("Retrieved read states for {} channels in server {}", channelUnreadResponses.size(), serverId);
+        return channelUnreadResponses;
+    }
+
+    @Override
     @Transactional
-    public void joinServer(long userId, long serverId) {
+    public void joinServer(Long userId, Long serverId) {
         log.info("User {} attempting to join server {}", userId, serverId);
 
         Server server = serverRepository.findById(serverId)
@@ -149,7 +177,7 @@ public class ServerServiceImpl implements ServerService {
 
     @Override
     @Transactional
-    public void leaveServer(long userId, long serverId) {
+    public void leaveServer(Long userId, Long serverId) {
         log.info("User {} attempting to leave server {}", userId, serverId);
 
         Server server = serverRepository.findById(serverId)
@@ -173,7 +201,7 @@ public class ServerServiceImpl implements ServerService {
 
     @Override
     @Transactional
-    public void deleteServer(long userId, long serverId) {
+    public void deleteServer(Long userId, Long serverId) {
         log.info("User {} attempting to delete server {}", userId, serverId);
 
         Server server = serverRepository.findById(serverId)

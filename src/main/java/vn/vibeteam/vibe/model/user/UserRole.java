@@ -1,7 +1,8 @@
-package vn.vibeteam.vibe.model.authorization;
+package vn.vibeteam.vibe.model.user;
 
 import jakarta.persistence.*;
 import lombok.*;
+import vn.vibeteam.vibe.model.authorization.Role;
 
 @Entity
 @Table(name = "user_roles")

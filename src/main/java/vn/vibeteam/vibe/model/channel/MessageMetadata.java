@@ -1,4 +1,4 @@
-package vn.vibeteam.vibe.model.server;
+package vn.vibeteam.vibe.model.channel;
 
 import lombok.*;
 
