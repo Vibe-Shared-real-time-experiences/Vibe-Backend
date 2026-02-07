@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import vn.vibeteam.vibe.common.EventType;
+import vn.vibeteam.vibe.common.FetchDirection;
 import vn.vibeteam.vibe.common.MessageStatus;
 import vn.vibeteam.vibe.dto.common.CursorResponse;
 import vn.vibeteam.vibe.dto.request.chat.CreateMessageRequest;
@@ -119,41 +120,46 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public CursorResponse<ChannelHistoryResponse> getChannelMessages(Long channelId, Long cursor, int limit) {
+    public CursorResponse<ChannelHistoryResponse> getChannelMessages(Long channelId, Long cursor,
+                                                                     FetchDirection direction, int limit) {
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
 
         // 1. Fetch messages
         Pageable pageable = PageRequest.of(
                 0,      // Using cursor pagination, so page number is always 0
-                limit + 1,          // Fetch one extra to determine if there's a next page
-                Sort.by(Sort.Direction.DESC, "id")
+                limit + 1         // Fetch one extra to determine if there's a next page
         );
 
         List<ChannelMessage> messages;
-        if (cursor != null) {
-            messages = messageRepository.findOlderMessagesById(channelId, cursor, pageable);
-        } else {
+        if (cursor == null) {
             messages = messageRepository.findLatestMessages(channelId, pageable);
+        } else {
+            if (direction == FetchDirection.BEFORE) {
+                messages = messageRepository.findOlderMessagesById(channelId, cursor, pageable);
+            } else { // direction == AFTER
+                messages = messageRepository.findNewerMessagesById(channelId, cursor, pageable);
+            }
         }
 
-        // 2. Create response
         List<UserProfile> userProfiles = userProfileRepository.findAllById(
                 messages.stream()
                         .map(msg -> msg.getAuthor().getUser().getId())
                         .collect(Collectors.toSet())
         );
-        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages, userProfiles);
+
+        // 2. Determine next cursor
+        Long nextCursor = null;
 
         boolean hasNext = messages.size() > limit;
         if (hasNext) {
             messages = messages.subList(0, limit);
+            nextCursor = direction == FetchDirection.BEFORE ?
+                    messages.getLast().getId() :
+                    messages.getFirst().getId();
         }
 
-        // 3. Determine next cursor
-        Long nextCursor = null;
-        if (hasNext) {
-            nextCursor = messages.getLast().getId();
-        }
+        // 3. Map to response
+        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages, userProfiles);
 
         log.info("Fetched {} messages for channelId: {}", channelHistoryResponse.getMessages().size(), channelId);
         return CursorResponse.<ChannelHistoryResponse>builder()

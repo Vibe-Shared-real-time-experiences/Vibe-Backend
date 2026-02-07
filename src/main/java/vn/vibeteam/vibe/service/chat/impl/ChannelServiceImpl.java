@@ -3,6 +3,8 @@ package vn.vibeteam.vibe.service.chat.impl;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import vn.vibeteam.vibe.common.ChannelType;
 import vn.vibeteam.vibe.dto.request.chat.CreateChannelRequest;
@@ -146,15 +148,19 @@ public class ChannelServiceImpl implements ChannelService {
         UserReadStateResponse userReadStateResponse = UserReadStateResponse.builder()
                                                                            .userId(userId)
                                                                            .channelId(channelId)
+                                                                           .lastMessageId(channel.getLastMessage().getId())
                                                                            .lastReadMessageId(lastReadId)
                                                                            .unreadCount(unreadCount)
+                                                                           .unread(unreadCount != null &&
+                                                                                     unreadCount > 0)
                                                                            .build();
 
-        log.info("Read state for user {} in channel {} fetched successfully", userId, channelId);
+        log.info("Fetched read state for user {} in channel {}, unread: {}", userId, channelId, unreadCount);
         return userReadStateResponse;
     }
 
     @Override
+    @Transactional
     public void updateUserReadStateInChannel(Long userId, Long channelId, Long messageId) {
         log.info("Updating read state for user {} in channel {}", userId, channelId);
 

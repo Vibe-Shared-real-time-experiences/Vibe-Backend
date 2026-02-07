@@ -15,11 +15,12 @@ public interface UserReadStateRepository extends JpaRepository<UserReadState, Lo
     @Modifying
     @Query(value = """
         INSERT INTO user_read_states (user_id, channel_id, last_read_message_id, last_updated)
-        VALUES (:userId, :channelId, :msgId, NOW())
+        VALUES (:userId, :channelId, :messageId, NOW())
         ON CONFLICT (user_id, channel_id) 
         DO UPDATE SET 
             last_read_message_id = :messageId,
             last_updated = NOW()
+        WHERE user_read_states.last_read_message_id < :messageId
         """, nativeQuery = true)
     void upsertReadState(Long userId, Long channelId, Long messageId);
 }

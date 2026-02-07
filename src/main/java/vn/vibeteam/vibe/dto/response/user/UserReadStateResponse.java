@@ -10,7 +10,9 @@ import java.time.LocalDateTime;
 public class UserReadStateResponse {
     private Long channelId;
     private Long userId;
+    private Long lastMessageId;
     private Long lastReadMessageId;
     private Long unreadCount;
+    private Boolean unread;
     private LocalDateTime lastReadAt;
 }

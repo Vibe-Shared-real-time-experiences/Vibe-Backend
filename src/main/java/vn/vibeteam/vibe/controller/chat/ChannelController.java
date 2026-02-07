@@ -4,17 +4,17 @@ import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import vn.vibeteam.vibe.common.FetchDirection;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
 import vn.vibeteam.vibe.dto.common.CursorResponse;
 import vn.vibeteam.vibe.dto.request.chat.CreateMessageRequest;
+import vn.vibeteam.vibe.dto.request.chat.UpdateUserUnreadStateRequest;
 import vn.vibeteam.vibe.dto.response.chat.ChannelHistoryResponse;
 import vn.vibeteam.vibe.dto.response.chat.CreateMessageResponse;
 import vn.vibeteam.vibe.dto.response.user.UserReadStateResponse;
 import vn.vibeteam.vibe.service.chat.ChannelService;
 import vn.vibeteam.vibe.service.chat.ChatService;
 import vn.vibeteam.vibe.util.SecurityUtils;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/channels")
@@ -30,12 +30,12 @@ public class ChannelController {
     public ApiResponse<CursorResponse<ChannelHistoryResponse>> getChannelMessages(
             @PathVariable Long channelId,
             @RequestParam(required = false) Long cursor,
+            @RequestParam(required = false, defaultValue = "BEFORE") FetchDirection direction,
             @RequestParam(defaultValue = "50")
             @Max(value = 50, message = "The  'limit' parameter cannot exceed 50.") int limit) {
 
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
-        CursorResponse<ChannelHistoryResponse> channelHistoryResponse = chatService.getChannelMessages(channelId,
-                                                                                                       cursor, limit);
+        CursorResponse<ChannelHistoryResponse> channelHistoryResponse = chatService.getChannelMessages(channelId, cursor, direction , limit);
 
         return ApiResponse.<CursorResponse<ChannelHistoryResponse>>builder()
                           .code(200)
@@ -73,10 +73,12 @@ public class ChannelController {
     }
 
     @PostMapping("/{channelId}/read-states")
-    public ApiResponse<Void> updateUserReadStateInChannel(@PathVariable Long channelId) {
+    public ApiResponse<Void> updateUserReadStateInChannel(@PathVariable Long channelId,
+                                                          @RequestBody UpdateUserUnreadStateRequest request) {
+        log.info("Update read state for channelId: {}, messageId: {}", channelId, request);
 
         Long userId = securityUtils.getCurrentUserId();
-        UserReadStateResponse userReadStatesInChannel = channelService.getUserReadStateInChannel(userId, channelId);
+        channelService.updateUserReadStateInChannel(userId, channelId, request.getLastReadMessageId());
 
         return ApiResponse.<Void>builder()
                           .code(200)

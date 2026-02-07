@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import vn.vibeteam.vibe.model.channel.ChannelMessage;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -14,14 +15,25 @@ public interface MessageRepository extends JpaRepository<ChannelMessage, Long> {
     @Query("SELECT cm FROM ChannelMessage cm " +
            "LEFT JOIN FETCH cm.author " +
            "WHERE cm.channel.id = :channelId " +
-           "AND cm.id < :currentMessageId ")
+           "AND cm.id < :currentMessageId " +
+           "ORDER BY cm.id DESC")
     List<ChannelMessage> findOlderMessagesById(Long channelId,
                                                Long currentMessageId,
                                                Pageable pageable);
 
     @Query("SELECT cm FROM ChannelMessage cm " +
+           "LEFT JOIN FETCH cm.author " +
+           "WHERE cm.channel.id = :channelId " +
+           "AND cm.id > :currentMessageId " +
+           "ORDER BY cm.id ASC")
+    List<ChannelMessage> findNewerMessagesById(Long channelId,
+                                               Long currentMessageId,
+                                               Pageable pageable);
+
+    @Query("SELECT cm FROM ChannelMessage cm " +
            "LEFT JOIN ServerMember sm ON cm.author.id = sm.id " +
-           "WHERE cm.channel.id = :channelId ")
+           "WHERE cm.channel.id = :channelId " +
+           "ORDER BY cm.id DESC")
     List<ChannelMessage> findLatestMessages(Long channelId, Pageable pageable);
 
     @Modifying
@@ -31,13 +43,13 @@ public interface MessageRepository extends JpaRepository<ChannelMessage, Long> {
     Optional<ChannelMessage> findByClientUniqueId(String uniqueId);
 
     @Query(value = """
-        SELECT COUNT(id) 
-        FROM (
-            SELECT id FROM channel_messages 
+        SELECT COUNT(*) FROM (
+            SELECT 1 
+            FROM channel_messages 
             WHERE channel_id = :channelId 
             AND id > :lastReadId 
-            LIMIT limit
-        ) as unread_messages
+            LIMIT :limit
+        ) AS subquery_limit
     """, nativeQuery = true)
     Long countUnreadMessagesInChannel(Long channelId, Long lastReadId, int limit);
 }
