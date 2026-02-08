@@ -141,12 +141,6 @@ public class ChatServiceImpl implements ChatService {
             }
         }
 
-        List<UserProfile> userProfiles = userProfileRepository.findAllById(
-                messages.stream()
-                        .map(msg -> msg.getAuthor().getUser().getId())
-                        .collect(Collectors.toSet())
-        );
-
         // 2. Determine next cursor
         Long nextCursor = null;
 
@@ -159,7 +153,7 @@ public class ChatServiceImpl implements ChatService {
         }
 
         // 3. Map to response
-        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages, userProfiles);
+        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messages);
 
         log.info("Fetched {} messages for channelId: {}", channelHistoryResponse.getMessages().size(), channelId);
         return CursorResponse.<ChannelHistoryResponse>builder()
@@ -221,8 +215,7 @@ public class ChatServiceImpl implements ChatService {
         return authorId.equals(userId);
     }
 
-    private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages,
-                                                               List<UserProfile> userProfiles) {
+    private ChannelHistoryResponse mapToChannelHistoryResponse(List<ChannelMessage> messages) {
         List<MessageResponse> messageResponses = messages.stream().map(
                 msg -> MessageResponse.builder()
                                       .id(msg.getId())
@@ -243,20 +236,14 @@ public class ChatServiceImpl implements ChatService {
                                                                                               .build()
                                                       ).toList() : null
                                       )
+//                                      .metadata(msg.getMetadata().getReactions().forEach())
+                                      .createdAt(msg.getCreatedAt())
+                                      .updatedAt(msg.getUpdatedAt())
                                       .build()
         ).toList();
 
-        Set<MemberSummaryInfoResponse> memberInfos = userProfiles.stream().map(
-                profile -> MemberSummaryInfoResponse.builder()
-                                                    .memberId(profile.getUser().getId())
-                                                    .displayName(profile.getDisplayName())
-                                                    .avatarUrl(profile.getAvatarUrl())
-                                                    .build()
-        ).collect(Collectors.toSet());
-
         return ChannelHistoryResponse.builder()
                                      .messages(messageResponses)
-                                     .memberInfos(memberInfos)
                                      .build();
     }
 

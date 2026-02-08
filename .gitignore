@@ -22,6 +22,9 @@ target/
 # ignore env files
 .env
 
+# ignore csv files
+*.csv
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/

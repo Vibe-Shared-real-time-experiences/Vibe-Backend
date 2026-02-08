@@ -13,7 +13,6 @@ import java.util.Optional;
 @Repository
 public interface MessageRepository extends JpaRepository<ChannelMessage, Long> {
     @Query("SELECT cm FROM ChannelMessage cm " +
-           "LEFT JOIN FETCH cm.author " +
            "WHERE cm.channel.id = :channelId " +
            "AND cm.id < :currentMessageId " +
            "ORDER BY cm.id DESC")
@@ -22,7 +21,6 @@ public interface MessageRepository extends JpaRepository<ChannelMessage, Long> {
                                                Pageable pageable);
 
     @Query("SELECT cm FROM ChannelMessage cm " +
-           "LEFT JOIN FETCH cm.author " +
            "WHERE cm.channel.id = :channelId " +
            "AND cm.id > :currentMessageId " +
            "ORDER BY cm.id ASC")
@@ -31,7 +29,6 @@ public interface MessageRepository extends JpaRepository<ChannelMessage, Long> {
                                                Pageable pageable);
 
     @Query("SELECT cm FROM ChannelMessage cm " +
-           "LEFT JOIN ServerMember sm ON cm.author.id = sm.id " +
            "WHERE cm.channel.id = :channelId " +
            "ORDER BY cm.id DESC")
     List<ChannelMessage> findLatestMessages(Long channelId, Pageable pageable);

@@ -14,5 +14,4 @@ import java.util.Set;
 @Builder
 public class ChannelHistoryResponse {
     private List<MessageResponse> messages;
-    private Set<MemberSummaryInfoResponse> memberInfos;
 }

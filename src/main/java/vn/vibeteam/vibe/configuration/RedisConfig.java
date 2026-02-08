@@ -25,13 +25,6 @@ import java.util.Map;
 @Configuration
 @EnableCaching
 public class RedisConfig {
-
-    private Map<String, Duration> getCacheConfigurations() {
-        return Map.of(
-                "servers",   Duration.ofHours(1)
-        );
-    }
-
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         PolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
@@ -57,15 +50,8 @@ public class RedisConfig {
                                                                           RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                                                                   .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer));
 
-        Map<String, RedisCacheConfiguration> ttlConfig = new HashMap<>();
-
-        getCacheConfigurations().forEach((cacheName, duration) -> {
-            ttlConfig.put(cacheName, defaults.entryTtl(duration));
-        });
-
         return RedisCacheManager.builder(connectionFactory)
                                 .cacheDefaults(defaults)
-                                .withInitialCacheConfigurations(ttlConfig)
                                 .build();
     }
 }

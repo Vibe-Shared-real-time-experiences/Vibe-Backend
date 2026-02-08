@@ -16,7 +16,7 @@ CREATE TABLE users
 
 CREATE TABLE user_profiles
 (
-    user_id       BIGSERIAL PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    user_id       BIGINT PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
     display_name  VARCHAR(100),
     date_of_birth DATE NOT NULL,
     avatar_url    TEXT,
@@ -53,24 +53,24 @@ CREATE TABLE permissions
 CREATE TABLE user_roles
 (
     id      BIGSERIAL PRIMARY KEY,
-    user_id BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    role_id BIGSERIAL NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    role_id BIGINT NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
     UNIQUE (user_id, role_id)
 );
 
 CREATE TABLE role_permissions
 (
     id            BIGSERIAL PRIMARY KEY,
-    role_id       BIGSERIAL NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
-    permission_id BIGSERIAL NOT NULL REFERENCES permissions (id) ON DELETE CASCADE,
+    role_id       BIGINT NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
+    permission_id BIGINT NOT NULL REFERENCES permissions (id) ON DELETE CASCADE,
     UNIQUE (role_id, permission_id)
 );
 
 CREATE TABLE relationships
 (
     id        BIGSERIAL PRIMARY KEY,
-    user_id_1 BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    user_id_2 BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    user_id_1 BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    user_id_2 BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     status    VARCHAR(20) CHECK (status IN ('PENDING', 'FRIEND', 'BLOCKED')),
     UNIQUE (user_id_1, user_id_2)
 );
@@ -81,7 +81,7 @@ CREATE TABLE relationships
 CREATE TABLE servers
 (
     id          BIGSERIAL PRIMARY KEY,
-    owner_id    BIGSERIAL    NOT NULL REFERENCES users (id),
+    owner_id    BIGINT       NOT NULL REFERENCES users (id),
     name        VARCHAR(100) NOT NULL,
     description TEXT,
     icon_url    TEXT,
@@ -95,7 +95,7 @@ CREATE TABLE servers
 CREATE TABLE categories
 (
     id         BIGSERIAL PRIMARY KEY,
-    server_id  BIGSERIAL   NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    server_id  BIGINT      NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
     name       VARCHAR(50) NOT NULL,
     position   INT         NOT NULL     DEFAULT 0,
     is_public  BOOLEAN     NOT NULL     DEFAULT TRUE,
@@ -108,8 +108,8 @@ CREATE TABLE categories
 CREATE TABLE channels
 (
     id          BIGSERIAL PRIMARY KEY,
-    server_id   BIGSERIAL REFERENCES servers (id) ON DELETE CASCADE,
-    category_id BIGSERIAL REFERENCES categories (id) ON DELETE CASCADE,
+    server_id   BIGINT REFERENCES servers (id) ON DELETE CASCADE,
+    category_id BIGINT REFERENCES categories (id) ON DELETE CASCADE,
     name        VARCHAR(100), -- Nullable for DMs
     type        VARCHAR(20) NOT NULL CHECK (type IN ('TEXT', 'VOICE', 'DM', 'GROUP_DM')),
     position    INT         NOT NULL     DEFAULT 0,
@@ -137,8 +137,8 @@ CREATE TABLE server_permissions
 CREATE TABLE server_members
 (
     id         BIGSERIAL PRIMARY KEY,
-    server_id  BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
-    user_id    BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    server_id  BIGINT NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    user_id    BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     nickname   VARCHAR(100),
     joined_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_active  BOOLEAN   NOT NULL       DEFAULT TRUE,
@@ -148,7 +148,7 @@ CREATE TABLE server_members
 CREATE TABLE server_roles
 (
     id                 BIGSERIAL PRIMARY KEY,
-    server_id          BIGSERIAL   NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    server_id          BIGINT      NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
     name               VARCHAR(50) NOT NULL,
     color              VARCHAR(7),
     position           INT       DEFAULT 0,
@@ -162,8 +162,8 @@ CREATE TABLE server_roles
 CREATE TABLE server_has_permissions
 (
     id            BIGSERIAL PRIMARY KEY,
-    server_id     BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
-    permission_id BIGSERIAL NOT NULL REFERENCES server_has_permissions (id) ON DELETE CASCADE,
+    server_id     BIGINT NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    permission_id BIGINT NOT NULL REFERENCES server_has_permissions (id) ON DELETE CASCADE,
     UNIQUE (server_id, permission_id)
 );
 
@@ -171,17 +171,17 @@ CREATE TABLE server_has_permissions
 CREATE TABLE member_roles
 (
     id        BIGSERIAL PRIMARY KEY,
-    server_id BIGSERIAL NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
-    member_id BIGSERIAL NOT NULL REFERENCES server_members (id) ON DELETE CASCADE,
-    role_id   BIGSERIAL NOT NULL REFERENCES server_roles (id) ON DELETE CASCADE,
+    server_id BIGINT NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    member_id BIGINT NOT NULL REFERENCES server_members (id) ON DELETE CASCADE,
+    role_id   BIGINT NOT NULL REFERENCES server_roles (id) ON DELETE CASCADE,
     UNIQUE (server_id, member_id, role_id)
 );
 
 CREATE TABLE channel_messages
 (
     id          BIGINT PRIMARY KEY,
-    channel_id  BIGSERIAL NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
-    author_id   BIGSERIAL NOT NULL REFERENCES server_members (id),
+    channel_id  BIGINT NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
+    author_id   BIGINT NOT NULL REFERENCES server_members (id),
     client_unique_id VARCHAR(100) NOT NULL UNIQUE,
     content     TEXT,
     -- List of jsonb objects with attachment info
@@ -206,8 +206,8 @@ CREATE TABLE channel_members (
 CREATE TABLE user_read_states
 (
     id                   BIGSERIAL PRIMARY KEY,
-    user_id              BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    channel_id           BIGSERIAL NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
+    user_id              BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    channel_id           BIGINT NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
     last_read_message_id BIGINT,
     last_updated         TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE (user_id, channel_id)
@@ -227,8 +227,8 @@ CREATE TABLE conversations
 CREATE TABLE conversation_participants
 (
     id              BIGSERIAL PRIMARY KEY,
-    conversation_id BIGSERIAL NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
-    user_id         BIGSERIAL NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    conversation_id BIGINT NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
+    user_id         BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     joined_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE (conversation_id, user_id)
 );
@@ -236,8 +236,8 @@ CREATE TABLE conversation_participants
 CREATE TABLE conversation_messages
 (
     id              BIGINT PRIMARY KEY,
-    conversation_id BIGSERIAL NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
-    author_id       BIGSERIAL NOT NULL REFERENCES users (id),
+    conversation_id BIGINT NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
+    author_id       BIGINT NOT NULL REFERENCES users (id),
     content         TEXT,
     attachments     JSONB,
     meta_data       JSONB, -- For reactions, embeds, etc.
@@ -280,11 +280,18 @@ CREATE TABLE conversation_messages
 -- );
 
 -- ==========================================
+-- INDEXES
+-- ==========================================
+
+-- channel_messages
+CREATE  INDEX idx_channel_messages_pagination
+    ON channel_messages (channel_id, id);
+
+-- ==========================================
 -- DATA INITIALIZATION
 -- ==========================================
 
 -- Insert default permissions
-
 INSERT INTO permissions (name, description)
 VALUES ('FULL_ACCESS', 'Permission to have full access to all features'),
        ('CREATE_SERVER', 'Permission to create a new server'),
@@ -307,10 +314,18 @@ INSERT INTO role_permissions (role_id, permission_id)
 VALUES ((SELECT id FROM roles WHERE name = 'ADMIN'),
         (SELECT id FROM permissions WHERE name = 'FULL_ACCESS'));
 
--- Sample user & admin account
+-- Sample user & admin account (at least 10 users (1 admin & 9 temp user))
 INSERT INTO Users (username, password)
 VALUES ('admin@gmail.com', '$2a$10$NL.fF5iJyANZKrvzuCjUT.V7DQrFE5oddrZ1vIouVi07UimJ2tX1y'),
-       ('user1@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.');
+       ('user1@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.'),
+       ('user2@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.'),
+       ('user3@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.'),
+       ('user4@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.'),
+       ('user5@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.'),
+       ('user6@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.'),
+       ('user7@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.'),
+       ('user8@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.'),
+       ('user9@gmail.com', '$2a$10$LQC60YO.ZW1AYMMcKEkxfuaKSjK4rSTAYV1r28eThu8IHfVgrQWI.');
 
 INSERT INTO user_profiles (user_id, display_name, date_of_birth, avatar_url, bio)
 VALUES ((SELECT id FROM users WHERE username = 'admin@gmail.com'),
@@ -320,6 +335,46 @@ VALUES ((SELECT id FROM users WHERE username = 'admin@gmail.com'),
         'I am the administrator of this platform.'),
        ((SELECT id FROM users WHERE username = 'user1@gmail.com'),
         'User One',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.'),
+       ((SELECT id FROM users WHERE username = 'user2@gmail.com'),
+        'User Two',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.'),
+       ((SELECT id FROM users WHERE username = 'user3@gmail.com'),
+        'User Three',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.'),
+       ((SELECT id FROM users WHERE username = 'user4@gmail.com'),
+        'User Four',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.'),
+       ((SELECT id FROM users WHERE username = 'user5@gmail.com'),
+        'User Five',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.'),
+       ((SELECT id FROM users WHERE username = 'user6@gmail.com'),
+        'User Six',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.'),
+       ((SELECT id FROM users WHERE username = 'user7@gmail.com'),
+        'User Seven',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.'),
+       ((SELECT id FROM users WHERE username = 'user8@gmail.com'),
+        'User Eight',
+        '1995-05-15',
+        'https://example.com/avatars/user1.png',
+        'Hello! I am User One.'),
+       ((SELECT id FROM users WHERE username = 'user9@gmail.com'),
+        'User Nine',
         '1995-05-15',
         'https://example.com/avatars/user1.png',
         'Hello! I am User One.');
@@ -402,6 +457,7 @@ VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
         0);
 
 -- Add admin as server member
+-- At least 10 members needed to test pagination properly
 INSERT INTO server_members (server_id, user_id, nickname)
 VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
         (SELECT id FROM users WHERE username = 'admin@gmail.com'),
@@ -412,6 +468,32 @@ INSERT INTO server_members (server_id, user_id, nickname)
 VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
         (SELECT id FROM users WHERE username = 'user1@gmail.com'),
         'User One');
+
+INSERT INTO server_members (server_id, user_id, nickname)
+VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user2@gmail.com'),
+        'User Two'),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user3@gmail.com'),
+        'User Three'),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user4@gmail.com'),
+        'User Four'),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user5@gmail.com'),
+        'User Five'),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user6@gmail.com'),
+        'User Six'),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user7@gmail.com'),
+        'User Seven'),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user8@gmail.com'),
+        'User Eight'),
+       ((SELECT id FROM servers WHERE name = 'Admin Server'),
+        (SELECT id FROM users WHERE username = 'user9@gmail.com'),
+        'User Nine');
 
 -- Add sample 50 message to general-chat for admin
 CREATE SEQUENCE IF NOT EXISTS channel_messages_id_seq START 1000;
@@ -425,7 +507,7 @@ $$
         SELECT id
         INTO channel_id
         FROM channels
-        WHERE name = 'general-chat'
+        WHERE name = 'general-chat#1'
           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
         SELECT id
         INTO author_id
@@ -454,7 +536,7 @@ $$
         SELECT id
         INTO channel_id
         FROM channels
-        WHERE name = 'general-chat'
+        WHERE name = 'general-chat#1'
           AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server');
         SELECT id
         INTO author_id
