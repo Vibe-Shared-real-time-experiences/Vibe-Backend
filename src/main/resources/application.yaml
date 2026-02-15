@@ -1,5 +1,8 @@
 server:
   port: 8080
+  tomcat:
+    threads:
+      max: 100
 spring:
   config:
     import: "optional:file:app.env[.properties]"
@@ -14,8 +17,8 @@ spring:
     password: ${DB_PASSWORD:root}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 80
-      minimum-idle: 20
+      maximum-pool-size: 10
+      minimum-idle: 10
   jpa:
     properties:
       hibernate:
@@ -26,6 +29,13 @@ spring:
     redis:
       host: localhost
       port: 6379
+      lettuce:
+        pool:
+          # Default is 8 connections
+          max-active: 40
+          max-idle: 20
+          min-idle: 5
+          max-wait: 500ms
   cache:
     type: redis
 
@@ -45,3 +55,7 @@ security:
     refresh-expiration-ms: 604800
 
 node-id: "1"
+
+#logging:
+#  level:
+#    ROOT: ERROR

@@ -14,7 +14,6 @@ public class WsMessageResponse {
     private Long id;
     private String content;
     private Long channelId;
-    private WsUserSummary author;
     private List<WsAttachmentResponse> attachments;
     private String createdAt;
 }

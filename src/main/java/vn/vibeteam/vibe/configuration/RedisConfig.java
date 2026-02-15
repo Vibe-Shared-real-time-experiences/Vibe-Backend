@@ -7,10 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
-import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.*;
 import tools.jackson.databind.DefaultTyping;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
@@ -53,5 +51,41 @@ public class RedisConfig {
         return RedisCacheManager.builder(connectionFactory)
                                 .cacheDefaults(defaults)
                                 .build();
+    }
+
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+
+        PolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
+                                                                              .allowIfBaseType(Object.class)
+                                                                              .build();
+
+        ObjectMapper objectMapper = JsonMapper.builder()
+                                              .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+                                              .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                                              .activateDefaultTyping(
+                                                      typeValidator,
+                                                      DefaultTyping.NON_FINAL,
+                                                      JsonTypeInfo.As.PROPERTY
+                                              )
+                                              .build();
+
+        // JSON Serializer
+        GenericJacksonJsonRedisSerializer jsonSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
+        template.setValueSerializer(jsonSerializer);
+        template.setHashValueSerializer(jsonSerializer);
+
+        // String Serializer
+//        StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
+//        template.setValueSerializer(stringRedisSerializer);
+//        template.setHashValueSerializer(stringRedisSerializer);
+
+        template.afterPropertiesSet();
+        return template;
     }
 }

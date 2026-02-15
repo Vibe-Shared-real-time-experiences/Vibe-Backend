@@ -13,7 +13,7 @@ import vn.vibeteam.vibe.dto.response.chat.ChannelHistoryResponse;
 import vn.vibeteam.vibe.dto.response.chat.CreateMessageResponse;
 import vn.vibeteam.vibe.dto.response.user.UserReadStateResponse;
 import vn.vibeteam.vibe.service.chat.ChannelService;
-import vn.vibeteam.vibe.service.chat.ChatService;
+import vn.vibeteam.vibe.service.chat.MessageService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
 @RestController
@@ -23,7 +23,7 @@ import vn.vibeteam.vibe.util.SecurityUtils;
 public class ChannelController {
 
     private final ChannelService channelService;
-    private final ChatService chatService;
+    private final MessageService messageService;
     private final SecurityUtils securityUtils;
 
     @GetMapping("/{channelId}/messages")
@@ -35,7 +35,7 @@ public class ChannelController {
             @Max(value = 50, message = "The  'limit' parameter cannot exceed 50.") int limit) {
 
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
-        CursorResponse<ChannelHistoryResponse> channelHistoryResponse = chatService.getChannelMessages(channelId, cursor, direction , limit);
+        CursorResponse<ChannelHistoryResponse> channelHistoryResponse = messageService.getChannelMessages(channelId, cursor, direction , limit);
 
         return ApiResponse.<CursorResponse<ChannelHistoryResponse>>builder()
                           .code(200)
@@ -50,7 +50,7 @@ public class ChannelController {
             @RequestBody CreateMessageRequest request) {
 
         Long userId = securityUtils.getCurrentUserId();
-        CreateMessageResponse response = chatService.sendMessage(userId, channelId, request);
+        CreateMessageResponse response = messageService.sendMessage(userId, channelId, request);
 
         return ApiResponse.<CreateMessageResponse>builder()
                           .code(200)

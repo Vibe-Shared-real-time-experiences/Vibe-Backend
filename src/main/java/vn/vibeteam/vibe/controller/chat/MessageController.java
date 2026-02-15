@@ -1,11 +1,10 @@
 package vn.vibeteam.vibe.controller.chat;
 
-import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
-import vn.vibeteam.vibe.service.chat.ChatService;
+import vn.vibeteam.vibe.service.chat.MessageService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
 @RestController
@@ -14,7 +13,7 @@ import vn.vibeteam.vibe.util.SecurityUtils;
 @Slf4j
 public class MessageController {
 
-    private final ChatService chatService;
+    private final MessageService messageService;
     private final SecurityUtils securityUtils;
 
     @PatchMapping("/{messageId}")
@@ -23,7 +22,7 @@ public class MessageController {
             @RequestBody String newContent) {
 
         Long userId = securityUtils.getCurrentUserId();
-        chatService.editMessageContent(userId, messageId, newContent);
+        messageService.editMessageContent(userId, messageId, newContent);
 
         return ApiResponse.<Void>builder()
                           .code(200)
@@ -36,7 +35,7 @@ public class MessageController {
     public ApiResponse<Void> deleteMessage(@PathVariable Long messageId) {
 
         Long userId = securityUtils.getCurrentUserId();
-        chatService.deleteMessage(userId, messageId);
+        messageService.deleteMessage(userId, messageId);
 
         return ApiResponse.<Void>builder()
                           .code(200)
