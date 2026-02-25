@@ -8,6 +8,7 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.*;
 import tools.jackson.databind.DefaultTyping;
 import tools.jackson.databind.DeserializationFeature;
@@ -79,13 +80,16 @@ public class RedisConfig {
         GenericJacksonJsonRedisSerializer jsonSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
         template.setValueSerializer(jsonSerializer);
         template.setHashValueSerializer(jsonSerializer);
-
-        // String Serializer
-//        StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
-//        template.setValueSerializer(stringRedisSerializer);
-//        template.setHashValueSerializer(stringRedisSerializer);
-
         template.afterPropertiesSet();
+
         return template;
+    }
+
+    // Configure RedisMessageListenerContainer to listen for key expiration events
+    @Bean
+    public RedisMessageListenerContainer keyExpirationListenerContainer(RedisConnectionFactory connectionFactory) {
+        RedisMessageListenerContainer listenerContainer = new RedisMessageListenerContainer();
+        listenerContainer.setConnectionFactory(connectionFactory);
+        return listenerContainer;
     }
 }

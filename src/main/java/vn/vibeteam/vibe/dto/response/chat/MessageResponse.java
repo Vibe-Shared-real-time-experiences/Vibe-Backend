@@ -1,9 +1,7 @@
 package vn.vibeteam.vibe.dto.response.chat;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,7 +10,9 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @Builder
+@ToString
 public class MessageResponse {
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
     private Long channelId;
     private Long senderId;

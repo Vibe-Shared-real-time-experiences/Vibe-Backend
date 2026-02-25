@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Repository;
 import tools.jackson.databind.ObjectMapper;
+import vn.vibeteam.vibe.common.FetchDirection;
 import vn.vibeteam.vibe.dto.response.chat.MessageResponse;
 import vn.vibeteam.vibe.repository.chat.cache.MessageCacheRepository;
 
@@ -26,16 +27,28 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
     private final ObjectMapper objectMapper;
 
     @Override
-    public List<MessageResponse> getMessages(Long channelId, Long cursor, int limit) {
-        limit += 1; // Get 1 extra to check if there's more data
-
+    public List<MessageResponse> getMessages(Long channelId, Long cursor, FetchDirection direction, int limit) {
         String key = String.format(KEY_PREFIX, channelId);
         ZSetOperations<String, Object> zSetOps = redisTemplate.opsForZSet();
 
         // Determine maxScore based on cursor
-        double maxScore = (cursor == null)
-                ? Double.POSITIVE_INFINITY
-                : (cursor - 1);
+//        double maxScore = (cursor == null)
+//                ? Double.POSITIVE_INFINITY
+//                : cursor - 1;
+        long maxScore = 0;
+
+        if (cursor == null) {
+            maxScore = Long.MAX_VALUE;
+        } else {
+            maxScore = cursor >> 22;
+            if (direction == FetchDirection.BEFORE) {
+                maxScore -= 1;
+            } else if (direction == FetchDirection.AFTER) {
+                maxScore += 1;
+            }
+        }
+
+        System.out.println("maxScore: " + maxScore);
 
         // Fetch logic: Fetch from maxScore down to minScore with limit
         Set<Object> rawObjects = zSetOps.reverseRangeByScore(key, Double.NEGATIVE_INFINITY, maxScore, 0, limit);
@@ -97,9 +110,8 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
         ZSetOperations<String, Object> zSetOps = redisTemplate.opsForZSet();
 
         for (MessageResponse msg : messages) {
-            String json = objectMapper.writeValueAsString(msg);
-            Long score = msg.getId();
-            zSetOps.add(key, msg, msg.getId());
+            Long score = msg.getId() >> 22;
+            zSetOps.add(key, msg, score);
         }
 
         // Reset TTL
@@ -111,11 +123,8 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
         String key = String.format(KEY_PREFIX, channelId);
 
         // Add new message to ZSet
-        redisTemplate.opsForZSet().add(key, message, message.getId());
-
-        String json = objectMapper.writeValueAsString(message);
-        Long score = message.getId();
-        redisTemplate.opsForZSet().add(key, json, score);
+        Long score = message.getId() >> 22;
+        redisTemplate.opsForZSet().add(key, message, score);
 
         // Reset TTL
         redisTemplate.expire(key, CACHE_TTL_MILISECOND, TimeUnit.MILLISECONDS);

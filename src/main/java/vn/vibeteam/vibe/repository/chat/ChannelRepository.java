@@ -43,6 +43,12 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
             """, nativeQuery = true)
     List<ChannelUnreadProjection> getChannelUnreadStates(Long serverId, Long userId);
 
+    @Query("SELECT cm.channel.id " +
+           "FROM ChannelMember cm " +
+           "WHERE cm.user.id = :userId AND cm.channel.type = 'DM' " +
+           "AND cm.channel.isDeleted = false")
+    List<Long> findDmChannelIdsByUserId(long userId);
+
     interface ChannelUnreadProjection {
         Long getChannelId();
         Long getLastMessageId();

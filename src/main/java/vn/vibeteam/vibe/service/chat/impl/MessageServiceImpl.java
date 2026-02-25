@@ -39,6 +39,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -169,26 +170,25 @@ public class MessageServiceImpl implements MessageService {
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
 
         // 1. Fetch messages from cache and return if found
-        List<MessageResponse> message = messageCacheRepository.getMessages(channelId, cursor, limit);
-        if (!message.isEmpty()) {
-            log.info("Messages retrieved from cache for channelId: {}, cursor: {}, limit: {}", channelId, cursor,
+        List<MessageResponse> message = messageCacheRepository.getMessages(channelId, cursor, direction, limit + 1);
+        // TODO: This solution away cache miss on any channel have less than 'limit' message
+        if (message.size() - limit > 0) {
+            log.info("CACHE HIT! Messages retrieved from cache for channelId: {}, cursor: {}, limit: {}", channelId, cursor,
                      limit);
             return createCursorResponse(mapToChannelHistoryResponse(message), limit, direction);
         }
 
         // 2. Fetch messages from DB
         List<ChannelMessage> messages =
-                getChannelMessagesFromDatabase(channelId, cursor, direction, limit);
+                getChannelMessagesFromDatabase(channelId, cursor, direction, limit + 1);
 
-        // 3. Save fetched messages to cache
         List<MessageResponse> messageResponses = mapToMessageResponses(messages);
-        messageCacheRepository.saveMessages(channelId, messageResponses);
-
-        // 4. Return response
         ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messageResponses);
         CursorResponse<ChannelHistoryResponse> cursorResponse =
                 createCursorResponse(channelHistoryResponse, limit, direction);
 
+        // 4. Save fetched messages to cache
+        messageCacheRepository.saveMessages(channelId, messageResponses);
 
         log.info("Messages retrieved from DB for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
         return cursorResponse;
@@ -232,7 +232,7 @@ public class MessageServiceImpl implements MessageService {
                                                                 int limit) {
         Pageable pageable = PageRequest.of(
                 0,      // Using cursor pagination, so page number is always 0
-                limit + 1 // Fetch one extra to determine if there's a next page
+                limit
         );
 
         List<ChannelMessage> messages;
@@ -513,6 +513,13 @@ public class MessageServiceImpl implements MessageService {
                     messages.getLast().getId() :
                     messages.getFirst().getId();
         }
+
+//        if (hasNext) {
+//            messages = messages.subList(0, limit);
+//            nextCursor = direction == FetchDirection.BEFORE ?
+//                    messages.getLast().getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() :
+//                    messages.getFirst().getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+//        }
 
         return CursorResponse.<ChannelHistoryResponse>builder()
                              .items(channelHistoryResponse)

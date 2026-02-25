@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import vn.vibeteam.vibe.model.server.Server;
 import vn.vibeteam.vibe.model.server.ServerMember;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,4 +25,7 @@ public interface ServerRepository extends JpaRepository<Server, Long> {
     @Modifying
     @Query("UPDATE Server s SET s.isDeleted = true WHERE s.id = :serverId")
     void deleteServerById(Long serverId);
+
+    @Query("SELECT sm.server.id FROM ServerMember sm WHERE sm.user.id = :userId")
+    List<Long> findServerIdsByUserId(long userId);
 }

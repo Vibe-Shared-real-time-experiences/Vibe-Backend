@@ -15,7 +15,7 @@ import vn.vibeteam.vibe.model.channel.ChannelMessage;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class WebSocketBroadcaster {
+public class WsMessageEventListener {
 
     private final SimpMessagingTemplate messagingTemplate;
     private static final String WEBSOCKET_SERVER_DESTINATION_PREFIX = "/topic/servers/";
