@@ -17,7 +17,6 @@ import vn.vibeteam.vibe.model.channel.Channel;
 import vn.vibeteam.vibe.model.server.Server;
 import vn.vibeteam.vibe.repository.chat.*;
 import vn.vibeteam.vibe.repository.user.UserReadStateRepository;
-import vn.vibeteam.vibe.repository.user.UserRepository;
 import vn.vibeteam.vibe.service.auth.ChannelGatekeeper;
 import vn.vibeteam.vibe.service.chat.ChannelService;
 

@@ -1,5 +1,6 @@
 package vn.vibeteam.vibe.dto.response.chat;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonRawValue;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,7 +15,9 @@ import java.util.Set;
 @Getter
 @Builder
 public class ChannelHistoryResponse {
-//    private List<MessageResponse> messages;
-    @JsonRawValue
-    private String messages;
+    private List<MessageResponse> messages;
+//    @JsonRawValue
+//    private String messages;
+//    @JsonIgnore
+//    private Long nextId;
 }

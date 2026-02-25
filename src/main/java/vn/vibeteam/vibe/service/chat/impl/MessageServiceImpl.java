@@ -3,24 +3,20 @@ package vn.vibeteam.vibe.service.chat.impl;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
-import vn.vibeteam.vibe.common.EventType;
 import vn.vibeteam.vibe.common.FetchDirection;
 import vn.vibeteam.vibe.common.MessageStatus;
 import vn.vibeteam.vibe.dto.common.CursorResponse;
 import vn.vibeteam.vibe.dto.event.ChannelMessageCreatedEvent;
 import vn.vibeteam.vibe.dto.request.chat.CreateMessageRequest;
 import vn.vibeteam.vibe.dto.response.chat.*;
-import vn.vibeteam.vibe.dto.websocket.WsAttachmentResponse;
-import vn.vibeteam.vibe.dto.websocket.WsEvent;
-import vn.vibeteam.vibe.dto.websocket.WsMessageResponse;
-import vn.vibeteam.vibe.dto.websocket.WsUserSummary;
+import vn.vibeteam.vibe.dto.websocket.MessageBroadcastEvent;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
 import vn.vibeteam.vibe.model.channel.Channel;
@@ -44,9 +40,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Service
 @RequiredArgsConstructor
@@ -67,11 +60,7 @@ public class MessageServiceImpl implements MessageService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
-    private final ExecutorService wsExecutor = Executors.newFixedThreadPool(10);
-
-    private final SimpMessagingTemplate messagingTemplate;
-    private static final String WEBSOCKET_SERVER_DESTINATION_PREFIX = "/topic/servers/";
-    private static final String WEBSOCKET_CHANNEL_DESTINATION_PREFIX = "/topic/channels/";
+    private final ApplicationEventPublisher eventPublisher;
     private static final String ATTACHMENT_BASE_URL = "https://vibe-attachments.s3.amazonaws.com/";
 
     @Override
@@ -120,42 +109,7 @@ public class MessageServiceImpl implements MessageService {
         messageStreamProducer.sendToStream(createMessageCreatedEvent(channelMessage));
 
         // 5. Broadcast message (server + channel)
-//        WsEvent<WsMessageResponse> wsChannelEvent = createWsChannelEvent(channelMessage);
-//
-//        // TODO: Remove this line after testing
-//        WsEvent<String> wsServerEvent = WsEvent.<String>builder()
-//                                               .eventType(EventType.MESSAGE_CREATED)
-//                                               .data("New message in server " + channel.getServer().getId())
-//                                               .build();
-//
-//        messagingTemplate.convertAndSend(WEBSOCKET_SERVER_DESTINATION_PREFIX + channel.getServer().getId(),
-//                                         wsServerEvent);
-//        messagingTemplate.convertAndSend(WEBSOCKET_CHANNEL_DESTINATION_PREFIX + channel.getId(), wsChannelEvent);
-
-        // 5. Broadcast message asynchronously (server + channel)
-        CompletableFuture.runAsync(() -> {
-            try {
-                WsEvent<WsMessageResponse> wsChannelEvent = createWsChannelEvent(channelMessage);
-
-                // Broadcast Channel
-                messagingTemplate.convertAndSend(
-                        WEBSOCKET_CHANNEL_DESTINATION_PREFIX + channel.getId(),
-                        wsChannelEvent
-                );
-
-                // Broadcast Server
-                WsEvent<String> wsServerEvent = WsEvent.<String>builder()
-                                                       .eventType(EventType.MESSAGE_CREATED)
-                                                       .data("New msg...")
-                                                       .build();
-                messagingTemplate.convertAndSend(
-                        WEBSOCKET_SERVER_DESTINATION_PREFIX + channel.getServer().getId(),
-                        wsServerEvent
-                );
-            } catch (Exception e) {
-                log.error("Error : ", e);
-            }
-        }, wsExecutor);
+        eventPublisher.publishEvent(new MessageBroadcastEvent(this, channelMessage, channel.getServer().getId()));
 
         // 5. Return response
         log.info("Message sent successfully with id: {}", channelMessage.getId());
@@ -209,47 +163,14 @@ public class MessageServiceImpl implements MessageService {
         return member;
     }
 
-//    @Override
-//    public CursorResponse<ChannelHistoryResponse> getChannelMessages(Long channelId, Long cursor,
-//                                                                     FetchDirection direction, int limit) {
-//        log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
-//
-//        // 1. Fetch messages from cache and return if found
-//        List<MessageResponse> message = messageCacheRepository.getMessages(channelId, cursor, limit);
-//        if (!message.isEmpty()) {
-//            log.info("Messages retrieved from cache for channelId: {}, cursor: {}, limit: {}", channelId, cursor,
-//                     limit);
-//            return createCursorResponse(mapToChannelHistoryResponse(message), limit, direction);
-//        }
-//
-//
-//        // 2. Fetch messages from DB
-//        List<ChannelMessage> messages =
-//                getChannelMessagesFromDatabase(channelId, cursor, direction, limit);
-//
-//        // 3. Save fetched messages to cache
-//        List<MessageResponse> messageResponses = mapToMessageResponses(messages);
-//        messageCacheRepository.saveMessages(channelId, messageResponses);
-//
-//        // 4. Return response
-//        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messageResponses);
-//        CursorResponse<ChannelHistoryResponse> cursorResponse =
-//                createCursorResponse(channelHistoryResponse, limit, direction);
-//
-//
-//        log.info("Messages retrieved from DB for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
-//        return cursorResponse;
-//    }
-
-    // TODO: This only for testing cache with String type
     @Override
     public CursorResponse<ChannelHistoryResponse> getChannelMessages(Long channelId, Long cursor,
                                                                      FetchDirection direction, int limit) {
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
 
         // 1. Fetch messages from cache and return if found
-        Set<String> message = messageCacheRepository.getMessages(channelId, cursor, limit);
-        if (message != null && !message.isEmpty()) {
+        List<MessageResponse> message = messageCacheRepository.getMessages(channelId, cursor, limit);
+        if (!message.isEmpty()) {
             log.info("Messages retrieved from cache for channelId: {}, cursor: {}, limit: {}", channelId, cursor,
                      limit);
             return createCursorResponse(mapToChannelHistoryResponse(message), limit, direction);
@@ -264,14 +185,48 @@ public class MessageServiceImpl implements MessageService {
         messageCacheRepository.saveMessages(channelId, messageResponses);
 
         // 4. Return response
-//        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messageResponses);
+        ChannelHistoryResponse channelHistoryResponse = mapToChannelHistoryResponse(messageResponses);
         CursorResponse<ChannelHistoryResponse> cursorResponse =
-                createCursorResponse(ChannelHistoryResponse.builder().messages("No msg").build(), limit, direction);
+                createCursorResponse(channelHistoryResponse, limit, direction);
 
 
         log.info("Messages retrieved from DB for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
         return cursorResponse;
     }
+
+    // TODO: This only for testing cache with String type
+//    @Override
+//    public CursorResponse<ChannelHistoryResponse> getChannelMessages(Long channelId, Long cursor,
+//                                                                     FetchDirection direction, int limit) {
+//        log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
+//
+//        // 1. Fetch messages from cache and return if found
+//        ChannelHistoryResponse channelHistoryResponse =
+//                messageCacheRepository.getMessages(channelId, cursor, limit);
+//        if (channelHistoryResponse.getMessages() != null) {
+//            log.info("Messages retrieved from cache for channelId: {}, cursor: {}, limit: {}", channelId, cursor,
+//                     limit);
+//            return createCursorResponse(channelHistoryResponse);
+//        }
+//
+//        // 2. Fetch messages from DB
+//        List<ChannelMessage> messages =
+//                getChannelMessagesFromDatabase(channelId, cursor, direction, limit);
+//
+//        // 3. Save fetched messages to cache
+//        List<MessageResponse> messageResponses = mapToMessageResponses(messages);
+//        messageCacheRepository.saveMessages(channelId, messageResponses);
+//
+//        // 4. Return response
+//        CursorResponse<ChannelHistoryResponse> cursorResponse =
+//                createCursorResponse(ChannelHistoryResponse.builder().messages(messageResponses).build(),
+//                                     limit,
+//                                     direction);
+//
+//
+//        log.info("Messages retrieved from DB for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
+//        return cursorResponse;
+//    }
 
     private List<ChannelMessage> getChannelMessagesFromDatabase(Long channelId, Long cursor, FetchDirection direction,
                                                                 int limit) {
@@ -477,31 +432,31 @@ public class MessageServiceImpl implements MessageService {
                               .build();
     }
 
-//    private ChannelHistoryResponse mapToChannelHistoryResponse(List<MessageResponse> messageResponses) {
-//        return ChannelHistoryResponse.builder()
-//                                     .messages(messageResponses)
-//                                     .build();
-//    }
-
-    // TODO: This only for testing cache with String type
-    private ChannelHistoryResponse mapToChannelHistoryResponse(Set<String> messageResponses) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        Iterator<String> iterator = messageResponses.iterator();
-        while (iterator.hasNext()) {
-            sb.append(iterator.next());
-            if (iterator.hasNext()) {
-                sb.append(",");
-            }
-        }
-        sb.append("]");
-
-        String messageJsonArray = sb.toString();
-
+    private ChannelHistoryResponse mapToChannelHistoryResponse(List<MessageResponse> message) {
         return ChannelHistoryResponse.builder()
-                                     .messages(messageJsonArray)
+                                     .messages(message)
                                      .build();
     }
+
+    // TODO: This only for testing cache with String type
+//    private ChannelHistoryResponse mapToChannelHistoryResponse(Set<String> messageResponses) {
+//        StringBuilder sb = new StringBuilder();
+//        sb.append("[");
+//        Iterator<String> iterator = messageResponses.iterator();
+//        while (iterator.hasNext()) {
+//            sb.append(iterator.next());
+//            if (iterator.hasNext()) {
+//                sb.append(",");
+//            }
+//        }
+//        sb.append("]");
+//
+//        String messageJsonArray = sb.toString();
+//
+//        return ChannelHistoryResponse.builder()
+//                                     .messages(messageJsonArray)
+//                                     .build();
+//    }
 
     private static List<MessageResponse> mapToMessageResponses(List<ChannelMessage> messages) {
         List<MessageResponse> messageResponses = messages.stream().map(
@@ -532,34 +487,6 @@ public class MessageServiceImpl implements MessageService {
         return messageResponses;
     }
 
-    private WsEvent<WsMessageResponse> createWsChannelEvent(ChannelMessage channelMessage) {
-        WsMessageResponse.WsMessageResponseBuilder wsMessageResponseBuilder =
-                WsMessageResponse.builder()
-                                 .id(channelMessage.getId())
-                                 .content(channelMessage.getContent())
-                                 .channelId(channelMessage.getChannel().getId())
-                                 .createdAt(channelMessage.getCreatedAt().toString());
-        if (channelMessage.getAttachmentMetadata() != null && !channelMessage.getAttachmentMetadata()
-                                                                             .isEmpty()) {
-            wsMessageResponseBuilder.attachments(channelMessage.getAttachmentMetadata().stream().map(
-                    attachment -> WsAttachmentResponse.builder()
-                                                      .url(attachment.getUrl())
-                                                      .type(attachment.getType())
-                                                      .contentType(attachment.getContentType())
-                                                      .width(attachment.getWidth())
-                                                      .height(attachment.getHeight())
-                                                      .size(attachment.getSize())
-                                                      .build()).toList());
-        }
-
-        WsMessageResponse wsMessageResponse = wsMessageResponseBuilder.build();
-
-        return WsEvent.<WsMessageResponse>builder()
-                      .eventType(EventType.MESSAGE_CREATED)
-                      .data(wsMessageResponse)
-                      .build();
-    }
-
     private long generateSnowflakeId() {
         return idGenerator.nextId();
     }
@@ -572,11 +499,31 @@ public class MessageServiceImpl implements MessageService {
                                     .build();
     }
 
+    private CursorResponse<ChannelHistoryResponse> createCursorResponse(ChannelHistoryResponse channelHistoryResponse,
+                                                                        int limit,
+                                                                        FetchDirection direction) {
+        List<MessageResponse> messages = channelHistoryResponse.getMessages();
+
+        Long nextCursor = null;
+        boolean hasNext = messages.size() > limit;
+
+        if (hasNext) {
+            messages = messages.subList(0, limit);
+            nextCursor = direction == FetchDirection.BEFORE ?
+                    messages.getLast().getId() :
+                    messages.getFirst().getId();
+        }
+
+        return CursorResponse.<ChannelHistoryResponse>builder()
+                             .items(channelHistoryResponse)
+                             .nextCursor(nextCursor)
+                             .hasMore(hasNext)
+                             .build();
+    }
+
 //    private CursorResponse<ChannelHistoryResponse> createCursorResponse(ChannelHistoryResponse channelHistoryResponse,
 //                                                                        int limit,
 //                                                                        FetchDirection direction) {
-//        List<MessageResponse> messages = channelHistoryResponse.getMessages();
-//
 //        Long nextCursor = null;
 //        boolean hasNext = messages.size() > limit;
 //
@@ -588,31 +535,20 @@ public class MessageServiceImpl implements MessageService {
 //        }
 //
 //        return CursorResponse.<ChannelHistoryResponse>builder()
-//                             .items(channelHistoryResponse)
+//                             .items(ChannelHistoryResponse.builder().messages(messages).build())
 //                             .nextCursor(nextCursor)
 //                             .hasMore(hasNext)
 //                             .build();
 //    }
 
-    private CursorResponse<ChannelHistoryResponse> createCursorResponse(ChannelHistoryResponse channelHistoryResponse,
-                                                                        int limit,
-                                                                        FetchDirection direction) {
-//        List<MessageResponse> messages = channelHistoryResponse.getMessages();
+//    private CursorResponse<ChannelHistoryResponse> createCursorResponse(ChannelHistoryResponse channelHistoryResponse) {
+//        Long nextCursor = channelHistoryResponse.getNextId();
+//        boolean hasMore = nextCursor != null;
 //
-//        Long nextCursor = null;
-//        boolean hasNext = messages.size() > limit;
-//
-//        if (hasNext) {
-//            messages = messages.subList(0, limit);
-//            nextCursor = direction == FetchDirection.BEFORE ?
-//                    messages.getLast().getId() :
-//                    messages.getFirst().getId();
-//        }
-
-        return CursorResponse.<ChannelHistoryResponse>builder()
-                             .items(channelHistoryResponse)
-                             .nextCursor(123L)
-                             .hasMore(true)
-                             .build();
-    }
+//        return CursorResponse.<ChannelHistoryResponse>builder()
+//                             .items(channelHistoryResponse)
+//                             .nextCursor(nextCursor)
+//                             .hasMore(hasMore)
+//                             .build();
+//    }
 }
