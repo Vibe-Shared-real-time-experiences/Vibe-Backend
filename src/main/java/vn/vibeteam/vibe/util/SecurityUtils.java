@@ -6,6 +6,8 @@ import org.springframework.stereotype.Component;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
 
+import java.security.Principal;
+
 @Component
 public class SecurityUtils {
 
@@ -17,5 +19,13 @@ public class SecurityUtils {
         }
 
         return Long.parseLong(authentication.getName());
+    }
+
+    public Long getCurrentlyUserIdThroughPrincipal(Principal principal) {
+        if (principal == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return Long.parseLong(principal.getName());
     }
 }

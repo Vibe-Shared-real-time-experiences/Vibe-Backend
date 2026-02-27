@@ -3,18 +3,18 @@
 -- ==========================================
 
 -- The Global User
-CREATE TABLE users
+CREATE TABLE IF NOT EXISTS users
 (
     id         BIGSERIAL PRIMARY KEY,
     username   VARCHAR(255) NOT NULL,
     password   TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE,
-    is_active  BOOLEAN                  DEFAULT TRUE,
-    is_deleted BOOLEAN                  DEFAULT FALSE
+    is_active  BOOLEAN NOT NULL DEFAULT TRUE,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE user_profiles
+CREATE TABLE IF NOT EXISTS user_profiles
 (
     user_id       BIGINT PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
     display_name  VARCHAR(100),
@@ -23,34 +23,34 @@ CREATE TABLE user_profiles
     bio           TEXT,
     created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    is_public     BOOLEAN                  DEFAULT TRUE,
-    is_deleted    BOOLEAN                  DEFAULT FALSE
+    is_public     BOOLEAN NOT NULL DEFAULT TRUE,
+    is_deleted    BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE roles
+CREATE TABLE IF NOT EXISTS roles
 (
     id          BIGSERIAL PRIMARY KEY,
     name        VARCHAR(255) UNIQUE NOT NULL,
     description varchar(255),
     created_at  TIMESTAMP DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE,
-    is_active   BOOLEAN   DEFAULT TRUE,
-    is_deleted  BOOLEAN   DEFAULT FALSE
+    is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE permissions
+CREATE TABLE IF NOT EXISTS permissions
 (
     id          BIGSERIAL PRIMARY KEY,
     name        VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
     created_at  TIMESTAMP DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE,
-    is_active   BOOLEAN   DEFAULT TRUE,
-    is_deleted  BOOLEAN   DEFAULT FALSE
+    is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 
-CREATE TABLE user_roles
+CREATE TABLE IF NOT EXISTS user_roles
 (
     id      BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -58,7 +58,7 @@ CREATE TABLE user_roles
     UNIQUE (user_id, role_id)
 );
 
-CREATE TABLE role_permissions
+CREATE TABLE IF NOT EXISTS role_permissions
 (
     id            BIGSERIAL PRIMARY KEY,
     role_id       BIGINT NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
@@ -66,7 +66,7 @@ CREATE TABLE role_permissions
     UNIQUE (role_id, permission_id)
 );
 
-CREATE TABLE relationships
+CREATE TABLE IF NOT EXISTS relationships
 (
     id        BIGSERIAL PRIMARY KEY,
     user_id_1 BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -78,7 +78,7 @@ CREATE TABLE relationships
 -- ==========================================
 -- 2. SERVERS, CHANNELS & MESSAGING
 -- ==========================================
-CREATE TABLE servers
+CREATE TABLE IF NOT EXISTS servers
 (
     id          BIGSERIAL PRIMARY KEY,
     owner_id    BIGINT       NOT NULL REFERENCES users (id),
@@ -92,7 +92,7 @@ CREATE TABLE servers
     is_deleted  BOOLEAN      NOT NULL    DEFAULT FALSE
 );
 
-CREATE TABLE categories
+CREATE TABLE IF NOT EXISTS categories
 (
     id         BIGSERIAL PRIMARY KEY,
     server_id  BIGINT      NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
@@ -102,10 +102,10 @@ CREATE TABLE categories
     is_active  BOOLEAN     NOT NULL     DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE,
-    is_deleted BOOLEAN                  DEFAULT FALSE
+    is_deleted BOOLEAN     NOT NULL     DEFAULT FALSE
 );
 
-CREATE TABLE channels
+CREATE TABLE IF NOT EXISTS channels
 (
     id          BIGSERIAL PRIMARY KEY,
     server_id   BIGINT REFERENCES servers (id) ON DELETE CASCADE,
@@ -121,7 +121,7 @@ CREATE TABLE channels
     is_deleted  BOOLEAN     NOT NULL     DEFAULT FALSE
 );
 
-CREATE TABLE server_permissions
+CREATE TABLE IF NOT EXISTS server_permissions
 (
     id          BIGSERIAL PRIMARY KEY,
     name        VARCHAR(255) UNIQUE NOT NULL, -- e.g. "VIEW_CHANNEL", "BAN_MEMBERS"
@@ -129,12 +129,12 @@ CREATE TABLE server_permissions
     bitmask     BIGINT              NOT NULL,
     created_at  TIMESTAMP DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE,
-    is_active   BOOLEAN   DEFAULT TRUE,
-    is_deleted  BOOLEAN   DEFAULT FALSE
+    is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 
-CREATE TABLE server_members
+CREATE TABLE IF NOT EXISTS server_members
 (
     id         BIGSERIAL PRIMARY KEY,
     server_id  BIGINT NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
@@ -145,7 +145,7 @@ CREATE TABLE server_members
     UNIQUE (server_id, user_id)
 );
 
-CREATE TABLE server_roles
+CREATE TABLE IF NOT EXISTS server_roles
 (
     id                 BIGSERIAL PRIMARY KEY,
     server_id          BIGINT      NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
@@ -155,11 +155,11 @@ CREATE TABLE server_roles
     permission_bitmask BIGINT    DEFAULT 0,
     created_at         TIMESTAMP DEFAULT NOW(),
     updated_at         TIMESTAMP WITH TIME ZONE,
-    is_active          BOOLEAN   DEFAULT TRUE,
-    is_deleted         BOOLEAN   DEFAULT FALSE
+    is_active          BOOLEAN NOT NULL DEFAULT TRUE,
+    is_deleted         BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE server_has_permissions
+CREATE TABLE IF NOT EXISTS server_has_permissions
 (
     id            BIGSERIAL PRIMARY KEY,
     server_id     BIGINT NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
@@ -168,7 +168,7 @@ CREATE TABLE server_has_permissions
 );
 
 
-CREATE TABLE member_roles
+CREATE TABLE IF NOT EXISTS member_roles
 (
     id        BIGSERIAL PRIMARY KEY,
     server_id BIGINT NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
@@ -177,7 +177,7 @@ CREATE TABLE member_roles
     UNIQUE (server_id, member_id, role_id)
 );
 
-CREATE TABLE channel_messages
+CREATE TABLE IF NOT EXISTS channel_messages
 (
     id          BIGINT PRIMARY KEY,
     channel_id  BIGINT NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
@@ -187,15 +187,15 @@ CREATE TABLE channel_messages
     -- List of jsonb objects with attachment info
     attachments JSONB,
     meta_data   JSONB, -- For reactions, embeds, etc.
-    is_pinned   BOOLEAN                  DEFAULT FALSE,
-    is_edited   BOOLEAN                  DEFAULT FALSE,
+    is_pinned   BOOLEAN NOT NULL DEFAULT FALSE,
+    is_edited   BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE,
-    is_deleted  BOOLEAN                  DEFAULT FALSE
+    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- FOR DM & GROUP DM CHANNELS
-CREATE TABLE channel_members (
+CREATE TABLE IF NOT EXISTS channel_members (
     id BIGSERIAL PRIMARY KEY,
     channel_id BIGINT REFERENCES channels(id),
     user_id BIGINT REFERENCES users(id),
@@ -203,7 +203,7 @@ CREATE TABLE channel_members (
     UNIQUE (channel_id, user_id)
 );
 
-CREATE TABLE user_read_states
+CREATE TABLE IF NOT EXISTS user_read_states
 (
     id                   BIGSERIAL PRIMARY KEY,
     user_id              BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -213,7 +213,7 @@ CREATE TABLE user_read_states
     UNIQUE (user_id, channel_id)
 );
 
-CREATE TABLE conversations
+CREATE TABLE IF NOT EXISTS conversations
 (
     id         BIGSERIAL PRIMARY KEY,
     is_group   BOOLEAN                  DEFAULT FALSE,
@@ -224,7 +224,7 @@ CREATE TABLE conversations
     is_deleted BOOLEAN NOT NULL         DEFAULT FALSE
 );
 
-CREATE TABLE conversation_participants
+CREATE TABLE IF NOT EXISTS conversation_participants
 (
     id              BIGSERIAL PRIMARY KEY,
     conversation_id BIGINT NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
@@ -233,7 +233,7 @@ CREATE TABLE conversation_participants
     UNIQUE (conversation_id, user_id)
 );
 
-CREATE TABLE conversation_messages
+CREATE TABLE IF NOT EXISTS conversation_messages
 (
     id              BIGINT PRIMARY KEY,
     conversation_id BIGINT NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
@@ -241,8 +241,8 @@ CREATE TABLE conversation_messages
     content         TEXT,
     attachments     JSONB,
     meta_data       JSONB, -- For reactions, embeds, etc.
-    is_pinned       BOOLEAN                  DEFAULT FALSE,
-    is_edited       BOOLEAN                  DEFAULT FALSE,
+    is_pinned       BOOLEAN NOT NULL DEFAULT FALSE,
+    is_edited       BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE,
     is_deleted      BOOLEAN   NOT NULL       DEFAULT FALSE

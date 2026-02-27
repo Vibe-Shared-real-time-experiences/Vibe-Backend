@@ -15,7 +15,7 @@ public class MessageResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
     private Long channelId;
-    private Long senderId;
+    private Long authorId;
     private String content;
     private List<MessageAttachmentResponse> attachments;
     private MessageMetadataResponse metadata;

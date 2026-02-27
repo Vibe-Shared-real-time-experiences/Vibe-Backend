@@ -12,8 +12,9 @@ import java.util.List;
 @Getter
 public class WsMessageResponse {
     private Long id;
-    private String content;
+    private Long authorId;
     private Long channelId;
+    private String content;
     private List<WsAttachmentResponse> attachments;
     private String createdAt;
 }

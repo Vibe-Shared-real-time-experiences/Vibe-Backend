@@ -409,7 +409,7 @@ public class MessageServiceImpl implements MessageService {
     private MessageResponse mapToMessageResponse(ChannelMessage channelMessage) {
         return MessageResponse.builder()
                               .id(channelMessage.getId())
-                              .senderId(channelMessage.getAuthor().getId())
+                              .authorId(channelMessage.getAuthor().getId())
                               .channelId(channelMessage.getChannel().getId())
                               .content(channelMessage.getContent())
                               .attachments(
@@ -462,7 +462,7 @@ public class MessageServiceImpl implements MessageService {
         List<MessageResponse> messageResponses = messages.stream().map(
                 msg -> MessageResponse.builder()
                                       .id(msg.getId())
-                                      .senderId(msg.getAuthor().getId())
+                                      .authorId(msg.getAuthor().getId())
                                       .channelId(msg.getChannel().getId())
                                       .content(msg.getContent())
                                       .attachments(

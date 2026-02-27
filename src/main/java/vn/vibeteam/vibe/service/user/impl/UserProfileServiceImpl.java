@@ -6,7 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import vn.vibeteam.vibe.dto.request.user.CreateUserProfileRequest;
 import vn.vibeteam.vibe.dto.request.user.UpdateUserProfileRequest;
+import vn.vibeteam.vibe.dto.request.user.UserSummaryRequest;
 import vn.vibeteam.vibe.dto.response.user.UserProfileResponse;
+import vn.vibeteam.vibe.dto.response.user.UserSummaryResponse;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
 import vn.vibeteam.vibe.model.user.User;
@@ -14,6 +16,8 @@ import vn.vibeteam.vibe.model.user.UserProfile;
 import vn.vibeteam.vibe.repository.user.UserProfileRepository;
 import vn.vibeteam.vibe.repository.user.UserRepository;
 import vn.vibeteam.vibe.service.user.UserProfileService;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +39,24 @@ public class UserProfileServiceImpl implements UserProfileService {
 
         log.info("User profile found for userId: {}", userId);
         return mapToResponse(userProfile);
+    }
+
+    @Override
+    public List<UserSummaryResponse> getUserSummaryInfo(UserSummaryRequest userSummaryRequest) {
+        List<Long> userIds = userSummaryRequest.getUserIds();
+
+        log.info("Getting user summary info for userIds: {}", userIds);
+
+        List<UserProfile> userProfiles = userProfileRepository.findByUserIdIn(userIds);
+        log.info("Found {} user profiles for userIds: {}", userProfiles.size(), userIds);
+
+        return userProfiles.stream()
+                .map(profile -> UserSummaryResponse.builder()
+                        .id(profile.getUser().getId())
+                        .username(profile.getDisplayName())
+                        .avatarUrl(profile.getAvatarUrl())
+                        .build())
+                .toList();
     }
 
     @Override

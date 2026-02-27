@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
@@ -11,6 +12,7 @@ import vn.vibeteam.vibe.repository.chat.ChannelRepository;
 import vn.vibeteam.vibe.repository.chat.ServerRepository;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -33,7 +35,10 @@ public class WebSocketSessionListener {
     @EventListener
     public void handleConnectEvent(SessionConnectedEvent event) {
         try {
-            long userId = securityUtils.getCurrentUserId();
+            StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+            Principal principal = accessor.getUser();
+
+            long userId = securityUtils.getCurrentlyUserIdThroughPrincipal(principal);
             log.info("WebSocket connected for userId: {}", userId);
 
             String subscriptionsKey = USER_SUBSCRIPTIONS_KEY_PREFIX + userId;
@@ -67,7 +72,10 @@ public class WebSocketSessionListener {
     @EventListener
     public void handleDisconnectEvent(SessionDisconnectEvent event) {
         try {
-            long userId = securityUtils.getCurrentUserId();
+            StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+            Principal principal = accessor.getUser();
+
+            long userId = securityUtils.getCurrentlyUserIdThroughPrincipal(principal);
             log.info("WebSocket disconnected for userId: {}", userId);
 
             String subscriptionsKey = USER_SUBSCRIPTIONS_KEY_PREFIX + userId;
