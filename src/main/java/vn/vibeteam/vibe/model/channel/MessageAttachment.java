@@ -11,7 +11,7 @@ import java.io.Serializable;
 @Setter
 @Builder
 public class MessageAttachment implements Serializable {
-    private String url;
+    private String objectKey; // S3 object key
     private MessageAttachmentType type;
     private String contentType; // "image/png", "video/mp4"
     private int width;

@@ -1,8 +1,10 @@
 package vn.vibeteam.vibe.service.chat.impl;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -62,7 +64,6 @@ public class MessageServiceImpl implements MessageService {
     private final ObjectMapper objectMapper;
 
     private final ApplicationEventPublisher eventPublisher;
-    private static final String ATTACHMENT_BASE_URL = "https://vibe-attachments.s3.amazonaws.com/";
 
     @Override
     public CreateMessageResponse sendMessage(Long userId, Long channelId, CreateMessageRequest request) {
@@ -82,12 +83,10 @@ public class MessageServiceImpl implements MessageService {
                               .clientUniqueId(request.getClientUniqueId())
                               .content(request.getContent());
 
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            String url = ATTACHMENT_BASE_URL + messageId + "/";
-
+        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {;
             List<MessageAttachment> attachments = request.getAttachments().stream().map(
                     att -> MessageAttachment.builder()
-                                            .url(url)
+                                            .objectKey(att.getObjectKey())
                                             .type(att.getType())
                                             .contentType(att.getContentType())
                                             .width(att.getWidth())
@@ -416,7 +415,7 @@ public class MessageServiceImpl implements MessageService {
                                       channelMessage.getAttachmentMetadata() != null ?
                                               channelMessage.getAttachmentMetadata().stream().map(
                                                       att -> MessageAttachmentResponse.builder()
-                                                                                      .url(att.getUrl())
+                                                                                      .objectKey(att.getObjectKey())
                                                                                       .type(att.getType())
                                                                                       .contentType(
                                                                                               att.getContentType())
@@ -469,7 +468,7 @@ public class MessageServiceImpl implements MessageService {
                                               msg.getAttachmentMetadata() != null ?
                                                       msg.getAttachmentMetadata().stream().map(
                                                               att -> MessageAttachmentResponse.builder()
-                                                                                              .url(att.getUrl())
+                                                                                              .objectKey(att.getObjectKey())
                                                                                               .type(att.getType())
                                                                                               .contentType(
                                                                                                       att.getContentType())

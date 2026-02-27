@@ -9,9 +9,14 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import vn.vibeteam.vibe.common.MediaType;
 import vn.vibeteam.vibe.common.MessageAttachmentType;
+import vn.vibeteam.vibe.dto.request.media.GenerateUrlRequest;
 import vn.vibeteam.vibe.dto.request.media.UploadMediaRequest;
+import vn.vibeteam.vibe.dto.response.media.PresignedUrlResponse;
 import vn.vibeteam.vibe.dto.response.media.UploadMediaResponse;
 import vn.vibeteam.vibe.exception.AppException;
 import vn.vibeteam.vibe.exception.ErrorCode;
@@ -20,6 +25,8 @@ import vn.vibeteam.vibe.service.media.MediaService;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
@@ -30,6 +37,7 @@ import java.util.UUID;
 public class MediaServiceImpl implements MediaService {
 
     private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
     private final Tika tika;
 
     @Value("${minio.bucket-name}")
@@ -40,6 +48,53 @@ public class MediaServiceImpl implements MediaService {
             "application/pdf", "text/plain", // Document
             "video/mp4", "video/mpeg", "video/quicktime" // Video
     );
+
+    public PresignedUrlResponse getPresignedUrl(long userId, GenerateUrlRequest request) {
+        log.info("Generating presigned URL for userId: {}, mediaType: {}, fileName: {}",
+                userId, request.getType(), request.getFileName());
+
+        // 1. Create object key based on media type
+        String extension = extractExtension(request.getFileName());
+        String objectKey = "";
+
+        switch (request.getType()) {
+            case MediaType.AVATAR:
+                objectKey = String.format("users/%d/avatar%s", userId, extension);
+                break;
+
+            case MediaType.ATTACHMENT:
+            default:
+                // Partition by date for attachments
+                String datePath = LocalDate.now().toString();
+                String uuid = UUID.randomUUID().toString();
+                objectKey = String.format("attachments/%s/%s%s", datePath, uuid, extension);
+                break;
+        }
+
+        try {
+            // 2. Create PutObjectRequest
+            PutObjectRequest objectRequest = PutObjectRequest.builder()
+                                                             .bucket(bucketName)
+                                                             .key(objectKey)
+                                                             .contentType(request.getContentType())
+                                                             .build();
+
+            // 3. Presign request with expiration time (5 minutes)
+            PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                                                                            .signatureDuration(Duration.ofMinutes(5))
+                                                                            .putObjectRequest(objectRequest)
+                                                                            .build();
+
+            // 4. Generate presigned URL
+            PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
+            String url = presignedRequest.url().toString();
+
+            log.info("Presigned URL generated successfully: {}", url);
+            return new PresignedUrlResponse(url, objectKey);
+        } catch (Exception e) {
+            throw new RuntimeException("Error when generating presigned URL: " + e.getMessage());
+        }
+    }
 
     @Override
     public UploadMediaResponse uploadFile(long userId, UploadMediaRequest request) {

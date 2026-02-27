@@ -11,7 +11,7 @@ import vn.vibeteam.vibe.common.MessageAttachmentType;
 @Getter
 @Builder
 public class MessageAttachmentResponse {
-    private String url;
+    private String objectKey;
     private MessageAttachmentType type; // "IMAGE", "VIDEO", "FILE"
     private String contentType; // "image/png", "video/mp4"
     private Integer width;

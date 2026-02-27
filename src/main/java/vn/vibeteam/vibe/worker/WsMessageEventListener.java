@@ -66,7 +66,7 @@ public class WsMessageEventListener {
             wsMessageResponseBuilder.attachments(
                     channelMessage.getAttachmentMetadata().stream()
                                   .map(attachment -> WsAttachmentResponse.builder()
-                                                                         .url(attachment.getUrl())
+                                                                         .url(attachment.getObjectKey())
                                                                          .type(attachment.getType())
                                                                          .contentType(attachment.getContentType())
                                                                          .width(attachment.getWidth())

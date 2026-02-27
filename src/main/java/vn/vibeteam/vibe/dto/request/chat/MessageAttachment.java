@@ -9,7 +9,7 @@ import vn.vibeteam.vibe.common.MessageAttachmentType;
 @Getter
 @Setter
 public class MessageAttachment {
-    private String url;
+    private String objectKey;
     private MessageAttachmentType type;
     private String contentType; // "image/png", "video/mp4"
     private Integer width;

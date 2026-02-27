@@ -11,6 +11,8 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import java.net.URI;
 
@@ -35,6 +37,24 @@ public class S3Config {
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)
                 ))
+                .build();
+    }
+
+    @Bean
+    public S3Presigner s3Presigner() {
+        S3Configuration s3Config = S3Configuration.builder()
+                                                  // TODO: remove this / set false when AWS SDK v2 when deploy to AWS S3,
+                                                  //  this is only for MinIO on local development
+                                                  .pathStyleAccessEnabled(true)
+                                                  .build();
+
+        return S3Presigner.builder()
+                .region(Region.of(region))
+                .endpointOverride(URI.create(endpoint))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKey, secretKey)
+                ))
+                .serviceConfiguration(s3Config)
                 .build();
     }
 
