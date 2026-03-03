@@ -12,7 +12,7 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 
 # Set recommended JVM options via an environment variable
-ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -XX:MaxRAMPercentage=60.0 -XX:InitialRAMPercentage=60.0 -XX:MaxMetaspaceSize=128m"
+ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -XX:MaxRAMPercentage=50.0 -XX:InitialRAMPercentage=50.0 -XX:MaxMetaspaceSize=128m"
 
 WORKDIR /app
 
