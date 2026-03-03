@@ -41,7 +41,8 @@ public class WsMessageEventListener {
             // Broadcast to server subscribers
             WsEvent<String> wsServerEvent = WsEvent.<String>builder()
                                                    .eventType(EventType.MESSAGE_CREATED)
-                                                   .data("New message in channel: " + channelMessage.getChannel().getName())
+                                                   .data("New message in channel: " +
+                                                         channelMessage.getChannel().getName())
                                                    .build();
             messagingTemplate.convertAndSend(
                     WEBSOCKET_SERVER_DESTINATION_PREFIX + serverId,
@@ -58,6 +59,7 @@ public class WsMessageEventListener {
         WsMessageResponse.WsMessageResponseBuilder wsMessageResponseBuilder =
                 WsMessageResponse.builder()
                                  .id(channelMessage.getId())
+                                 .authorId(channelMessage.getAuthor().getId())
                                  .content(channelMessage.getContent())
                                  .channelId(channelMessage.getChannel().getId())
                                  .createdAt(channelMessage.getCreatedAt().toString());
