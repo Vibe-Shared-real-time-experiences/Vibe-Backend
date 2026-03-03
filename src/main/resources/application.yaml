@@ -27,17 +27,26 @@ spring:
       ddl-auto: validate
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: true # For cloud connections
       lettuce:
         pool:
           # Default is 8 connections
-          max-active: 40
-          max-idle: 20
-          min-idle: 5
-          max-wait: 500ms
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
+          max-wait: 2000ms
+
   cache:
     type: redis
+
+# App config
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
 # MinIO / S3 Configuration
 minio:
@@ -47,6 +56,7 @@ minio:
   bucket-name: vibe-storage
   region: us-east-1
 
+# Security config
 security:
   jwt:
     secret-key: "91f6b3d88bdd0c39fa408b0ee613cdd4e83c774c9440e96c3107e1dc8604a4c8"
