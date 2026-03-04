@@ -20,21 +20,15 @@ import java.util.stream.Collectors;
 public class MessageCacheRepositoryImpl implements MessageCacheRepository {
 
     private final RedisTemplate<String, Object> redisTemplate;
-//    private final StringRedisTemplate redisTemplate;
 
     private static final String KEY_PREFIX = "channel:%d:messages";
     private static final long CACHE_TTL_MILISECOND = 5 * 60 * 1000; // 5 minutes in milliseconds
-    private final ObjectMapper objectMapper;
 
     @Override
     public List<MessageResponse> getMessages(Long channelId, Long cursor, FetchDirection direction, int limit) {
         String key = String.format(KEY_PREFIX, channelId);
         ZSetOperations<String, Object> zSetOps = redisTemplate.opsForZSet();
 
-        // Determine maxScore based on cursor
-//        double maxScore = (cursor == null)
-//                ? Double.POSITIVE_INFINITY
-//                : cursor - 1;
         long maxScore = 0;
 
         if (cursor == null) {
@@ -63,46 +57,6 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
                          .collect(Collectors.toList());
     }
 
-//    @Override
-//    public ChannelHistoryResponse getMessages(Long channelId, Long cursor, FetchDirection direction, int limit) {
-//        int fetchSize = limit + 1;
-//        String key = String.format(KEY_PREFIX, channelId);
-//        ZSetOperations<String, String> zSetOps = redisTemplate.opsForZSet();
-//
-//        double maxScore = (cursor == null) ? Double.POSITIVE_INFINITY : (cursor - 1);
-//
-//        // 1. Get messages with scores <= maxScore in descending order (newest to oldest)
-//        // TypedTuple store both score (message_id) + value
-//        Set<ZSetOperations.TypedTuple<String>> rawTuples = zSetOps.reverseRangeByScoreWithScores(
-//                key, Double.NEGATIVE_INFINITY, maxScore, 0, fetchSize
-//        );
-//
-//        if (rawTuples == null || rawTuples.isEmpty()) {
-//            return ChannelHistoryResponse.builder().messages("[]").nextId(null).build();
-//        }
-//
-//        // 2. Find next cursor for pagination
-//        List<String> messageStrings = new ArrayList<>();
-//        Long nextId = null;
-//        int count = 0;
-//
-//        for (ZSetOperations.TypedTuple<String> tuple : rawTuples) {
-//            count++;
-//            if (count <= limit) {
-//                messageStrings.add(tuple.getValue());
-//                nextId = tuple.getScore().longValue();
-//            } else {
-//                break;
-//            }
-//        }
-//
-//        if (rawTuples.size() <= limit) {
-//            nextId = null;
-//        }
-//
-//        return mapToChannelHistoryResponse(messageStrings, nextId);
-//    }
-
     @Override
     public void saveMessages(Long channelId, List<MessageResponse> messages) {
         if (messages == null || messages.isEmpty()) return;
@@ -112,7 +66,7 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
 
         for (MessageResponse msg : messages) {
             Long score = msg.getId() >> 22;
-            zSetOps.add(key, msg, score);
+            zSetOps.addIfAbsent(key, msg, score);
         }
 
         // Reset TTL
@@ -123,7 +77,6 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
     public void saveMessage(Long channelId, MessageResponse message) {
         String key = String.format(KEY_PREFIX, channelId);
 
-        // Add new message to ZSet
         Long score = message.getId() >> 22;
         redisTemplate.opsForZSet().add(key, message, score);
 

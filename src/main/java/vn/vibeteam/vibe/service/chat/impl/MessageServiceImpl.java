@@ -68,55 +68,26 @@ public class MessageServiceImpl implements MessageService {
     public CreateMessageResponse sendMessage(Long userId, Long channelId, CreateMessageRequest request) {
         log.info("Sending message to channelId: {}", channelId);
 
-        // 1. Find channel
         Channel channel = findChannelReferenceById(channelId);
         ServerMember member = findServerMemberReference(channel.getServer().getId(), userId);
 
-        // 2. Create ChannelMessage
-        Long messageId = generateSnowflakeId();
-        ChannelMessage.ChannelMessageBuilder channelMessageBuilder =
-                ChannelMessage.builder()
-                              .id(messageId)
-                              .channel(channel)
-                              .author(member)
-                              .clientUniqueId(request.getClientUniqueId())
-                              .content(request.getContent());
+        ChannelMessage channelMessage = createNewMessage(request, channel, member);
 
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {;
-            List<MessageAttachment> attachments = request.getAttachments().stream().map(
-                    att -> MessageAttachment.builder()
-                                            .objectKey(att.getObjectKey())
-                                            .type(att.getType())
-                                            .contentType(att.getContentType())
-                                            .width(att.getWidth())
-                                            .height(att.getHeight())
-                                            .size(att.getSize())
-                                            .build()
-            ).toList();
-
-            channelMessageBuilder.attachmentMetadata(attachments);
-        }
-
-        // 3. Persist message (cache)
-        ChannelMessage channelMessage = channelMessageBuilder.build();
-        channelMessage.setCreatedAt(java.time.LocalDateTime.now());
-        channelMessage.setUpdatedAt(java.time.LocalDateTime.now());
-
+        /** Write-back strategy:
+         * Cache first & publish message created event to stream
+         * Return response immediately without waiting for DB I/O
+         * Async worker will consume event, write to DB (batch)
+         */
         messageCacheRepository.saveMessage(channelId, mapToMessageResponse(channelMessage));
-
-        // 4. Send to stream for async DB persistence
         messageStreamProducer.sendToStream(createMessageCreatedEvent(channelMessage));
 
-        // 5. Broadcast message (server + channel)
         eventPublisher.publishEvent(new MessageBroadcastEvent(this, channelMessage, channel.getServer().getId()));
 
-        // 5. Return response
         log.info("Message sent successfully with id: {}", channelMessage.getId());
         return mapToCreateMessageResponse(channelMessage, request.getClientUniqueId());
     }
 
     private Channel findChannelReferenceById(Long channelId) {
-        // 1. Try to get channel from cache
         ChannelResponse channelById = channelCacheRepository.getChannelById(channelId);
         if (channelById != null) {
             log.info("Channel {} retrieved from cache", channelId);
@@ -167,16 +138,18 @@ public class MessageServiceImpl implements MessageService {
                                                                      FetchDirection direction, int limit) {
         log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
 
-        // 1. Fetch messages from cache and return if found
+        /** Read-aside strategy:
+         * Get messages from cache first
+           - Cache hit: return result immediately
+           - Cache miss: query DB, update cache, then return result
+         */
         List<MessageResponse> message = messageCacheRepository.getMessages(channelId, cursor, direction, limit + 1);
-        // TODO: This solution away cache miss on any channel have less than 'limit' message
         if (message.size() - limit > 0) {
             log.info("CACHE HIT! Messages retrieved from cache for channelId: {}, cursor: {}, limit: {}", channelId, cursor,
                      limit);
             return createCursorResponse(mapToChannelHistoryResponse(message), limit, direction);
         }
 
-        // 2. Fetch messages from DB
         List<ChannelMessage> messages =
                 getChannelMessagesFromDatabase(channelId, cursor, direction, limit + 1);
 
@@ -185,7 +158,6 @@ public class MessageServiceImpl implements MessageService {
         CursorResponse<ChannelHistoryResponse> cursorResponse =
                 createCursorResponse(channelHistoryResponse, limit, direction);
 
-        // 4. Save fetched messages to cache
         messageCacheRepository.saveMessages(channelId, messageResponses);
 
         log.info("Messages retrieved from DB for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
@@ -299,6 +271,41 @@ public class MessageServiceImpl implements MessageService {
             Long lastMessageId = entry.getValue();
             channelRepository.updateLastMessageId(channelId, lastMessageId);
         }
+    }
+
+    private long generateSnowflakeId() {
+        return idGenerator.nextId();
+    }
+
+    private ChannelMessage createNewMessage(CreateMessageRequest request, Channel channel, ServerMember member) {
+        Long messageId = generateSnowflakeId();
+        ChannelMessage.ChannelMessageBuilder channelMessageBuilder =
+                ChannelMessage.builder()
+                              .id(messageId)
+                              .channel(channel)
+                              .author(member)
+                              .clientUniqueId(request.getClientUniqueId())
+                              .content(request.getContent());
+
+        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {;
+            List<MessageAttachment> attachments = request.getAttachments().stream().map(
+                    att -> MessageAttachment.builder()
+                                            .objectKey(att.getObjectKey())
+                                            .type(att.getType())
+                                            .contentType(att.getContentType())
+                                            .width(att.getWidth())
+                                            .height(att.getHeight())
+                                            .size(att.getSize())
+                                            .build()
+            ).toList();
+
+            channelMessageBuilder.attachmentMetadata(attachments);
+        }
+
+        ChannelMessage channelMessage = channelMessageBuilder.build();
+        channelMessage.setCreatedAt(LocalDateTime.now());
+        channelMessage.setUpdatedAt(LocalDateTime.now());
+        return channelMessage;
     }
 
     public void bulkInsertMessages(List<ChannelMessageCreatedEvent> payloads) {
@@ -438,10 +445,6 @@ public class MessageServiceImpl implements MessageService {
                                       .build()
         ).toList();
         return messageResponses;
-    }
-
-    private long generateSnowflakeId() {
-        return idGenerator.nextId();
     }
 
     private CreateMessageResponse mapToCreateMessageResponse(ChannelMessage channelMessage, String key) {
