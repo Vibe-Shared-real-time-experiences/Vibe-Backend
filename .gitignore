@@ -19,7 +19,7 @@ target/
 *.ipr
 
 # ignore env files
-src/main/resources/.env
+.env
 
 # ignore csv files
 *.csv
@@ -36,3 +36,4 @@ build/
 
 ### VS Code ###
 .vscode/
+/vibe-local-data/

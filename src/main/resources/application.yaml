@@ -4,8 +4,8 @@ server:
     threads:
       max: 100
 spring:
-  #  config:
-  #    import: optional:file:app.env[.properties]
+  config:
+    import: optional:file:.env[.properties]
   servlet:
     multipart:
       enabled: true
@@ -52,15 +52,15 @@ app:
 # MinIO / S3 Configuration
 minio:
   endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket-name: vibe-storage
-  region: us-east-1
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: ${MINIO_BUCKET_NAME:vibe-storage}
+  region: ${MINIO_REGION:us-east-1}
 
 # Security config
 security:
   jwt:
-    secret-key: "91f6b3d88bdd0c39fa408b0ee613cdd4e83c774c9440e96c3107e1dc8604a4c8"
+    secret-key: ${JWT_SECRET_KEY:mysecretkey}
     issuer: "VibeApp"
     expiration-ms: 3600
     refresh-expiration-ms: 604800
