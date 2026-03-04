@@ -7,8 +7,8 @@ import java.util.List;
 
 public interface MessageCacheRepository {
     List<MessageResponse> getMessages(Long channelId, Long cursor, FetchDirection direction, int limit);
-//    Set<String> getMessages(Long channelId, Long cursor, int limit);
-//    ChannelHistoryResponse getMessages(Long channelId, Long cursor, FetchDirection direction, int limit);
     void saveMessages(Long channelId, List<MessageResponse> messages);
     void saveMessage(Long channelId, MessageResponse message);
+    void updateMessageContent(Long channelId, Long messageId, String newContent);
+    void deleteMessage(Long channelId, Long messageId);
 }

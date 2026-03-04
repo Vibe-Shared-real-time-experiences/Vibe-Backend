@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import vn.vibeteam.vibe.dto.common.ApiResponse;
+import vn.vibeteam.vibe.dto.request.chat.MessageContentUpdatedRequest;
+import vn.vibeteam.vibe.dto.request.chat.MessageDeletedRequest;
 import vn.vibeteam.vibe.service.chat.MessageService;
 import vn.vibeteam.vibe.util.SecurityUtils;
 
@@ -18,11 +20,10 @@ public class MessageController {
 
     @PatchMapping("/{messageId}")
     public ApiResponse<Void> editMessageContent(
-            @PathVariable Long messageId,
-            @RequestBody String newContent) {
+            @RequestBody MessageContentUpdatedRequest request) {
 
         Long userId = securityUtils.getCurrentUserId();
-        messageService.editMessageContent(userId, messageId, newContent);
+        messageService.editMessageContent(userId, request);
 
         return ApiResponse.<Void>builder()
                           .code(200)
@@ -32,10 +33,10 @@ public class MessageController {
     }
 
     @DeleteMapping("/{messageId}")
-    public ApiResponse<Void> deleteMessage(@PathVariable Long messageId) {
+    public ApiResponse<Void> deleteMessage(@RequestBody MessageDeletedRequest request) {
 
         Long userId = securityUtils.getCurrentUserId();
-        messageService.deleteMessage(userId, messageId);
+        messageService.deleteMessage(userId, request);
 
         return ApiResponse.<Void>builder()
                           .code(200)

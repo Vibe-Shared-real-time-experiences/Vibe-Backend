@@ -1,10 +1,8 @@
 package vn.vibeteam.vibe.service.chat.impl;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +15,8 @@ import vn.vibeteam.vibe.common.MessageStatus;
 import vn.vibeteam.vibe.dto.common.CursorResponse;
 import vn.vibeteam.vibe.dto.event.ChannelMessageCreatedEvent;
 import vn.vibeteam.vibe.dto.request.chat.CreateMessageRequest;
+import vn.vibeteam.vibe.dto.request.chat.MessageContentUpdatedRequest;
+import vn.vibeteam.vibe.dto.request.chat.MessageDeletedRequest;
 import vn.vibeteam.vibe.dto.response.chat.*;
 import vn.vibeteam.vibe.dto.websocket.MessageBroadcastEvent;
 import vn.vibeteam.vibe.exception.AppException;
@@ -41,7 +41,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -193,40 +192,6 @@ public class MessageServiceImpl implements MessageService {
         return cursorResponse;
     }
 
-    // TODO: This only for testing cache with String type
-//    @Override
-//    public CursorResponse<ChannelHistoryResponse> getChannelMessages(Long channelId, Long cursor,
-//                                                                     FetchDirection direction, int limit) {
-//        log.info("Fetching messages for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
-//
-//        // 1. Fetch messages from cache and return if found
-//        ChannelHistoryResponse channelHistoryResponse =
-//                messageCacheRepository.getMessages(channelId, cursor, limit);
-//        if (channelHistoryResponse.getMessages() != null) {
-//            log.info("Messages retrieved from cache for channelId: {}, cursor: {}, limit: {}", channelId, cursor,
-//                     limit);
-//            return createCursorResponse(channelHistoryResponse);
-//        }
-//
-//        // 2. Fetch messages from DB
-//        List<ChannelMessage> messages =
-//                getChannelMessagesFromDatabase(channelId, cursor, direction, limit);
-//
-//        // 3. Save fetched messages to cache
-//        List<MessageResponse> messageResponses = mapToMessageResponses(messages);
-//        messageCacheRepository.saveMessages(channelId, messageResponses);
-//
-//        // 4. Return response
-//        CursorResponse<ChannelHistoryResponse> cursorResponse =
-//                createCursorResponse(ChannelHistoryResponse.builder().messages(messageResponses).build(),
-//                                     limit,
-//                                     direction);
-//
-//
-//        log.info("Messages retrieved from DB for channelId: {}, cursor: {}, limit: {}", channelId, cursor, limit);
-//        return cursorResponse;
-//    }
-
     private List<ChannelMessage> getChannelMessagesFromDatabase(Long channelId, Long cursor, FetchDirection direction,
                                                                 int limit) {
         Pageable pageable = PageRequest.of(
@@ -250,7 +215,8 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional
-    public void editMessageContent(Long userId, Long messageId, String newContent) {
+    public void editMessageContent(Long userId, MessageContentUpdatedRequest updateMessageRequest) {
+        Long messageId = updateMessageRequest.getMessageId();
         log.info("Editing content of messageId: {}", messageId);
 
         // 1. Find message
@@ -267,17 +233,22 @@ public class MessageServiceImpl implements MessageService {
         }
 
         // 3. Update content
-        channelMessage.setContent(newContent);
+        messageCacheRepository.updateMessageContent(updateMessageRequest.getChannelId(),
+                                                    updateMessageRequest.getMessageId(),
+                                                    updateMessageRequest.getNewContent());
+        channelMessage.setContent(updateMessageRequest.getNewContent());
         messageRepository.save(channelMessage);
+
         log.info("Message {} content updated successfully", messageId);
     }
 
     @Override
     @Transactional
-    public void deleteMessage(Long userId, Long messageId) {
+    public void deleteMessage(Long userId, MessageDeletedRequest messageDeletedRequest) {
+        Long messageId = messageDeletedRequest.getMessageId();
         log.info("Deleting messageId: {}", messageId);
 
-        // 1. Find message
+//        // 1. Find message
         ChannelMessage channelMessage = messageRepository.findById(messageId)
                                                          .orElseThrow(
                                                                  () -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
@@ -292,7 +263,10 @@ public class MessageServiceImpl implements MessageService {
         }
 
         // 3. Delete message
-        messageRepository.deleteMessage(messageId);
+        messageCacheRepository.deleteMessage(messageDeletedRequest.getChannelId(), messageId);
+
+        channelMessage.setIsDeleted(true);
+        messageRepository.save(channelMessage);
         log.info("Message {} deleted successfully", messageId);
     }
 
@@ -437,26 +411,6 @@ public class MessageServiceImpl implements MessageService {
                                      .build();
     }
 
-    // TODO: This only for testing cache with String type
-//    private ChannelHistoryResponse mapToChannelHistoryResponse(Set<String> messageResponses) {
-//        StringBuilder sb = new StringBuilder();
-//        sb.append("[");
-//        Iterator<String> iterator = messageResponses.iterator();
-//        while (iterator.hasNext()) {
-//            sb.append(iterator.next());
-//            if (iterator.hasNext()) {
-//                sb.append(",");
-//            }
-//        }
-//        sb.append("]");
-//
-//        String messageJsonArray = sb.toString();
-//
-//        return ChannelHistoryResponse.builder()
-//                                     .messages(messageJsonArray)
-//                                     .build();
-//    }
-
     private static List<MessageResponse> mapToMessageResponses(List<ChannelMessage> messages) {
         List<MessageResponse> messageResponses = messages.stream().map(
                 msg -> MessageResponse.builder()
@@ -513,48 +467,10 @@ public class MessageServiceImpl implements MessageService {
                     messages.getFirst().getId();
         }
 
-//        if (hasNext) {
-//            messages = messages.subList(0, limit);
-//            nextCursor = direction == FetchDirection.BEFORE ?
-//                    messages.getLast().getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() :
-//                    messages.getFirst().getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-//        }
-
         return CursorResponse.<ChannelHistoryResponse>builder()
                              .items(channelHistoryResponse)
                              .nextCursor(nextCursor)
                              .hasMore(hasNext)
                              .build();
     }
-
-//    private CursorResponse<ChannelHistoryResponse> createCursorResponse(ChannelHistoryResponse channelHistoryResponse,
-//                                                                        int limit,
-//                                                                        FetchDirection direction) {
-//        Long nextCursor = null;
-//        boolean hasNext = messages.size() > limit;
-//
-//        if (hasNext) {
-//            messages = messages.subList(0, limit);
-//            nextCursor = direction == FetchDirection.BEFORE ?
-//                    messages.getLast().getId() :
-//                    messages.getFirst().getId();
-//        }
-//
-//        return CursorResponse.<ChannelHistoryResponse>builder()
-//                             .items(ChannelHistoryResponse.builder().messages(messages).build())
-//                             .nextCursor(nextCursor)
-//                             .hasMore(hasNext)
-//                             .build();
-//    }
-
-//    private CursorResponse<ChannelHistoryResponse> createCursorResponse(ChannelHistoryResponse channelHistoryResponse) {
-//        Long nextCursor = channelHistoryResponse.getNextId();
-//        boolean hasMore = nextCursor != null;
-//
-//        return CursorResponse.<ChannelHistoryResponse>builder()
-//                             .items(channelHistoryResponse)
-//                             .nextCursor(nextCursor)
-//                             .hasMore(hasMore)
-//                             .build();
-//    }
 }

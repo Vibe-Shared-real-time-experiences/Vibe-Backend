@@ -19,7 +19,7 @@ target/
 *.ipr
 
 # ignore env files
-.env
+src/main/resources/.env
 
 # ignore csv files
 *.csv

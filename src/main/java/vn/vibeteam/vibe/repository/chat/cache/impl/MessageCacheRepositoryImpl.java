@@ -43,9 +43,10 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
             maxScore = cursor >> 22;
             if (direction == FetchDirection.BEFORE) {
                 maxScore -= 1;
-            } else if (direction == FetchDirection.AFTER) {
-                maxScore += 1;
-            }
+            } else
+                if (direction == FetchDirection.AFTER) {
+                    maxScore += 1;
+                }
         }
 
         System.out.println("maxScore: " + maxScore);
@@ -130,16 +131,43 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
         redisTemplate.expire(key, CACHE_TTL_MILISECOND, TimeUnit.MILLISECONDS);
     }
 
-//    private ChannelHistoryResponse mapToChannelHistoryResponse(List<String> messageResponses, Long nextId) {
-//        if (messageResponses == null || messageResponses.isEmpty()) {
-//            return ChannelHistoryResponse.builder().messages("[]").nextId(null).build();
-//        }
-//
-//        String messageJsonArray = "[" + String.join(",", messageResponses) + "]";
-//
-//        return ChannelHistoryResponse.builder()
-//                                     .messages(messageJsonArray)
-//                                     .nextId(nextId)
-//                                     .build();
-//    }
+    @Override
+    public void updateMessageContent(Long channelId, Long messageId, String newContent) {
+        String key = String.format(KEY_PREFIX, channelId);
+        ZSetOperations<String, Object> zSetOps = redisTemplate.opsForZSet();
+
+        Long score = messageId >> 22;
+        Set<Object> rawObjects = zSetOps.rangeByScore(key, score, score);
+
+        if (rawObjects == null || rawObjects.isEmpty()) {
+            log.warn("Message with id {} not found in cache for channel {}", messageId, channelId);
+            return;
+        }
+
+        Object rawObj = rawObjects.iterator().next();
+        zSetOps.removeRangeByScore(key, score, score);
+
+        MessageResponse msg = (MessageResponse) rawObj;
+        msg.setContent(newContent);
+        zSetOps.add(key, msg, score);
+
+        redisTemplate.expire(key, CACHE_TTL_MILISECOND, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void deleteMessage(Long channelId, Long messageId) {
+        String key = String.format(KEY_PREFIX, channelId);
+        ZSetOperations<String, Object> zSetOps = redisTemplate.opsForZSet();
+
+        Long score = messageId >> 22;
+        Set<Object> rawObjects = zSetOps.rangeByScore(key, score, score);
+
+        if (rawObjects == null || rawObjects.isEmpty()) {
+            log.warn("Message with id {} not found in cache for channel {}", messageId, channelId);
+            return;
+        }
+
+        zSetOps.removeRangeByScore(key, score, score);
+        redisTemplate.expire(key, CACHE_TTL_MILISECOND, TimeUnit.MILLISECONDS);
+    }
 }
