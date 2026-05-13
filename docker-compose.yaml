@@ -6,7 +6,7 @@ services:
     container_name: vibe-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
+      POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
@@ -35,6 +35,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_ALLOWED_ORIGINS:-*}
     command: server /data --console-address ":9001"
     ports:
       - "${MINIO_PORT}:9000"
@@ -43,6 +44,26 @@ services:
       - ${DATA_DIR:-./vibe-local-data}/minio:/data
     networks:
       - vibe-network
+
+  minio-setup:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z-cpuv1
+    depends_on:
+      - vibe-storage
+    networks:
+      - vibe-network
+    environment:
+      - MINIO_USER=${MINIO_USER}
+      - MINIO_PASSWORD=${MINIO_PASSWORD}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - BUCKET_NAME=${MINIO_BUCKET_NAME}
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myminio http://vibe-storage:9000 \"$$MINIO_USER\" \"$$MINIO_PASSWORD\";
+      mc mb myminio/\"$$BUCKET_NAME\" || true;
+      mc anonymous set public myminio/\"$$BUCKET_NAME\";
+      exit 0;
+      "
 
 networks:
   vibe-network:

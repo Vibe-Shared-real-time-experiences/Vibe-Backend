@@ -43,8 +43,6 @@ public class MessageCacheRepositoryImpl implements MessageCacheRepository {
                 }
         }
 
-        System.out.println("maxScore: " + maxScore);
-
         // Fetch logic: Fetch from maxScore down to minScore with limit
         Set<Object> rawObjects = zSetOps.reverseRangeByScore(key, Double.NEGATIVE_INFINITY, maxScore, 0, limit);
 

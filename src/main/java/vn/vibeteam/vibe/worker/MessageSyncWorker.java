@@ -1,5 +1,6 @@
 package vn.vibeteam.vibe.worker;
 
+import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -63,7 +64,8 @@ public class MessageSyncWorker {
             for (MapRecord<String, Object, Object> record : messages) {
                 String json = (String) record.getValue().get("payload");
                 if (json != null) {
-                    ChannelMessageCreatedEvent channelMessage = objectMapper.readValue(json, ChannelMessageCreatedEvent.class);
+                    ChannelMessageCreatedEvent channelMessage =
+                            objectMapper.readValue(json, ChannelMessageCreatedEvent.class);
                     batchEntities.add(channelMessage);
                 }
 

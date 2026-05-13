@@ -21,6 +21,8 @@ target/
 # ignore env files
 .env
 
+data
+
 # ignore csv files
 *.csv
 

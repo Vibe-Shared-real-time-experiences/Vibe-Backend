@@ -495,6 +495,19 @@ VALUES ((SELECT id FROM servers WHERE name = 'Admin Server'),
         (SELECT id FROM users WHERE username = 'user9@gmail.com'),
         'User Nine');
 
+INSERT INTO channel_members (channel_id, user_id)
+VALUES ((SELECT id
+         FROM channels
+         WHERE name = 'general-chat#1'
+              AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server')),
+        (SELECT id FROM users WHERE username = 'admin@gmail.com'));
+INSERT INTO channel_members (channel_id, user_id)
+VALUES ((SELECT id
+         FROM channels
+         WHERE name = 'general-chat#1'
+              AND server_id = (SELECT id FROM servers WHERE name = 'Admin Server')),
+        (SELECT id FROM users WHERE username = 'user1@gmail.com'));
+
 -- Add sample 50 message to general-chat for admin
 CREATE SEQUENCE IF NOT EXISTS channel_messages_id_seq START 1000;
 
